@@ -230,7 +230,7 @@ export interface DerivedOutcome {
 
 /**
  * Architect M1 지적 반영: 외생 추출과 행동 지문을 분리한다.
- * worldSeed는 시도 단위로 고정되어 분·팀·네임스페이스 추출을 지배하고,
+ * worldSeed는 시도 단위로 고정되어 분과 팀과 네임스페이스 추출을 지배하고,
  * decision draw만 사용자 행동에 의존한다. 그래서 슬라이더 1클릭이
  * 미래의 모든 난수 스트림을 갈아버리지 않는다.
  */
