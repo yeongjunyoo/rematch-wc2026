@@ -1,0 +1,292 @@
+import type {
+  DecidedPhase,
+  DerivedOutcomeRule,
+  GoalKind,
+  GoalEvent,
+  MatchClock,
+  MatchFormat,
+  MatchState,
+  PenaltyAttemptEvent,
+  PenaltyResult,
+  Phase,
+  PhaseChangeEvent,
+  ShootoutState,
+  Side,
+  TerminalFacts,
+} from "./types";
+
+export function advanceClock(clock: MatchClock, _format: MatchFormat): MatchClock {
+  if (clock.phase === "shootout" || clock.phase === "finished") {
+    return clock;
+  }
+
+  return {
+    ...clock,
+    minute: clock.minute + 1,
+    absoluteMinute: clock.absoluteMinute + 1,
+  };
+}
+
+export function stepPhase(
+  state: MatchState,
+  format: MatchFormat,
+): { state: MatchState; changed: PhaseChangeEvent | null } {
+  if (state.clock.phase === "regulation") {
+    if (state.clock.minute < format.regulationMinutes + format.regulationStoppage) {
+      return { state, changed: null };
+    }
+
+    if (state.userGoals !== state.opponentGoals) {
+      return finish(state, "regulationEnded");
+    }
+
+    if (format.extraTimeRule !== "none") {
+      return changePhase(state, "extraTime", "regulationEnded");
+    }
+
+    return format.shootoutOnTie
+      ? startShootout(state)
+      : finish(state, "regulationEnded");
+  }
+
+  if (state.clock.phase === "extraTime") {
+    if (format.extraTimeRule === "suddenDeath" && state.userGoals !== state.opponentGoals) {
+      return finish(state, "goldenGoal");
+    }
+
+    if (state.clock.minute < format.extraTimeMinutes) {
+      return { state, changed: null };
+    }
+
+    if (state.userGoals !== state.opponentGoals) {
+      return finish(state, "extraTimeEnded");
+    }
+
+    return format.shootoutOnTie
+      ? startShootout(state)
+      : finish(state, "extraTimeEnded");
+  }
+
+  return { state, changed: null };
+}
+
+export function applyGoal(
+  state: MatchState,
+  format: MatchFormat,
+  goal: { side: Side; scorerId: string; kind: GoalKind; assistId?: string },
+): MatchState {
+  if (state.clock.phase === "finished" || state.clock.phase === "shootout") {
+    return state;
+  }
+
+  const event: GoalEvent = {
+    type: "goal",
+    side: goal.side,
+    scorerId: goal.scorerId,
+    ...(goal.assistId === undefined ? {} : { assistId: goal.assistId }),
+    kind: goal.kind,
+    clock: state.clock,
+  };
+  const scored: MatchState = {
+    ...state,
+    userGoals: state.userGoals + (goal.side === "user" ? 1 : 0),
+    opponentGoals: state.opponentGoals + (goal.side === "opponent" ? 1 : 0),
+    events: [...state.events, event],
+  };
+
+  if (scored.clock.phase === "extraTime" && format.extraTimeRule === "suddenDeath") {
+    return finish(scored, "goldenGoal").state;
+  }
+
+  return scored;
+}
+
+export function applyPenaltyAttempt(
+  state: MatchState,
+  format: MatchFormat,
+  attempt: { side: Side; takerId: string; result: PenaltyResult },
+): MatchState {
+  if (state.clock.phase !== "shootout" || state.shootout === null) {
+    return state;
+  }
+
+  const shootout = state.shootout;
+  const event: PenaltyAttemptEvent = {
+    type: "penaltyAttempt",
+    side: attempt.side,
+    takerId: attempt.takerId,
+    round: state.clock.shootoutRound ?? shootout.completedRounds + 1,
+    result: attempt.result,
+    clock: state.clock,
+  };
+  const userScore = shootout.userScore + (attempt.side === "user" && attempt.result === "scored" ? 1 : 0);
+  const opponentScore = shootout.opponentScore + (attempt.side === "opponent" && attempt.result === "scored" ? 1 : 0);
+  const attempts = [...shootout.attempts, event];
+  const userAttempts = attempts.filter((entry) => entry.side === "user").length;
+  const opponentAttempts = attempts.filter((entry) => entry.side === "opponent").length;
+  const completedRounds = Math.min(userAttempts, opponentAttempts);
+
+  if (!shootout.inSuddenDeath) {
+    const userRemaining = Math.max(0, format.shootoutRegularRounds - userAttempts);
+    const opponentRemaining = Math.max(0, format.shootoutRegularRounds - opponentAttempts);
+    const updated = updateShootout(state, {
+      userScore,
+      opponentScore,
+      completedRounds,
+      inSuddenDeath: false,
+      attempts,
+    });
+
+    if (userScore > opponentScore + opponentRemaining || opponentScore > userScore + userRemaining) {
+      return finish(updated, "decided").state;
+    }
+
+    if (userAttempts === format.shootoutRegularRounds && opponentAttempts === format.shootoutRegularRounds) {
+      if (userScore !== opponentScore) {
+        return finish(updated, "decided").state;
+      }
+
+      return {
+        ...updated,
+        shootout: {
+          userScore,
+          opponentScore,
+          completedRounds: format.shootoutRegularRounds,
+          inSuddenDeath: true,
+          attempts,
+        },
+        clock: { ...updated.clock, shootoutRound: format.shootoutRegularRounds + 1 },
+      };
+    }
+
+    return updated;
+  }
+
+  const updated = updateShootout(state, {
+    userScore,
+    opponentScore,
+    completedRounds,
+    inSuddenDeath: true,
+    attempts,
+  });
+  if (userAttempts === opponentAttempts && userScore !== opponentScore) {
+    return finish(updated, "decided").state;
+  }
+
+  return updated;
+}
+
+export function deriveTerminalFacts(
+  state: MatchState,
+  scenario: { derivedOutcomeRule: DerivedOutcomeRule | null },
+): TerminalFacts {
+  const decidedPhase = findDecidedPhase(state);
+  const shootout = state.shootout;
+  const userResult = shootout !== null && shootout.userScore !== shootout.opponentScore
+    ? (shootout.userScore > shootout.opponentScore ? "win" : "loss")
+    : state.userGoals === state.opponentGoals
+      ? "draw"
+      : state.userGoals > state.opponentGoals
+        ? "win"
+        : "loss";
+  const rule = scenario.derivedOutcomeRule;
+
+  return {
+    userGoals: state.userGoals,
+    opponentGoals: state.opponentGoals,
+    shootout,
+    decidedPhase,
+    userResult,
+    // 파생 결과는 규칙이 제공될 때만 세 행 표에서 선택한다
+    derivedOutcome: rule === null
+      ? null
+      : userResult === "win"
+        ? rule.onWin
+        : userResult === "draw"
+          ? rule.onDraw
+          : rule.onLoss,
+  };
+}
+
+function changePhase(
+  state: MatchState,
+  to: Exclude<Phase, "finished" | "shootout">,
+  reason: PhaseChangeEvent["reason"],
+): { state: MatchState; changed: PhaseChangeEvent } {
+  const clock: MatchClock = {
+    phase: to,
+    minute: 0,
+    absoluteMinute: state.clock.absoluteMinute,
+    shootoutRound: null,
+  };
+  const changed: PhaseChangeEvent = { type: "phaseChange", from: state.clock.phase, to, reason, clock };
+  return { state: { ...state, clock, events: [...state.events, changed] }, changed };
+}
+
+function startShootout(state: MatchState): { state: MatchState; changed: PhaseChangeEvent } {
+  const clock: MatchClock = {
+    phase: "shootout",
+    minute: 0,
+    absoluteMinute: state.clock.absoluteMinute,
+    shootoutRound: 1,
+  };
+  const changed: PhaseChangeEvent = {
+    type: "phaseChange",
+    from: state.clock.phase,
+    to: "shootout",
+    reason: "shootoutStarted",
+    clock,
+  };
+  const shootout: ShootoutState = {
+    userScore: 0,
+    opponentScore: 0,
+    completedRounds: 0,
+    inSuddenDeath: false,
+    attempts: [],
+  };
+  return { state: { ...state, clock, shootout, events: [...state.events, changed] }, changed };
+}
+
+function updateShootout(state: MatchState, shootout: ShootoutState): MatchState {
+  const nextRound = shootout.completedRounds + 1;
+  return {
+    ...state,
+    shootout,
+    clock: { ...state.clock, shootoutRound: nextRound },
+    events: [...state.events, shootout.attempts[shootout.attempts.length - 1]!],
+  };
+}
+
+function finish(
+  state: MatchState,
+  reason: PhaseChangeEvent["reason"],
+): { state: MatchState; changed: PhaseChangeEvent } {
+  const clock: MatchClock = {
+    phase: "finished",
+    minute: state.clock.minute,
+    absoluteMinute: state.clock.absoluteMinute,
+    shootoutRound: null,
+  };
+  const changed: PhaseChangeEvent = { type: "phaseChange", from: state.clock.phase, to: "finished", reason, clock };
+  const completed = { ...state, clock, events: [...state.events, changed] };
+  return {
+    state: { ...completed, terminal: deriveTerminalFacts(completed, { derivedOutcomeRule: null }) },
+    changed,
+  };
+}
+
+function findDecidedPhase(state: MatchState): DecidedPhase {
+  const finalChange = [...state.events].reverse().find(
+    (event): event is PhaseChangeEvent => event.type === "phaseChange" && event.to === "finished",
+  );
+  if (finalChange?.reason === "goldenGoal") {
+    return "goldenGoal";
+  }
+  if (finalChange?.reason === "extraTimeEnded") {
+    return "extraTime";
+  }
+  if (finalChange?.reason === "decided" || state.shootout !== null) {
+    return "shootout";
+  }
+  return "regulation";
+}

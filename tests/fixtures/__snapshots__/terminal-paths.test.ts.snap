@@ -1,0 +1,110 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`다섯 종료 경로 > 실제 종료 사실과 형식 선언을 스냅샷으로 보존한다 1`] = `
+[
+  {
+    "actualTerminal": {
+      "decidedPhase": "regulation",
+      "derivedOutcome": {
+        "achieved": false,
+        "statement": "녹아웃 진출에 실패했습니다.",
+      },
+      "opponentGoals": 1,
+      "shootout": null,
+      "userGoals": 0,
+      "userResult": "loss",
+    },
+    "format": {
+      "extraTimeMinutes": 0,
+      "extraTimeRule": "none",
+      "regulationMinutes": 90,
+      "regulationStoppage": 0,
+      "shootoutOnTie": false,
+      "shootoutRegularRounds": 5,
+    },
+    "id": "za-kor-2026",
+  },
+  {
+    "actualTerminal": {
+      "decidedPhase": "regulation",
+      "derivedOutcome": null,
+      "opponentGoals": 1,
+      "shootout": null,
+      "userGoals": 2,
+      "userResult": "win",
+    },
+    "format": {
+      "extraTimeMinutes": 0,
+      "extraTimeRule": "none",
+      "regulationMinutes": 90,
+      "regulationStoppage": 0,
+      "shootoutOnTie": false,
+      "shootoutRegularRounds": 5,
+    },
+    "id": "kor-cze-2026",
+  },
+  {
+    "actualTerminal": {
+      "decidedPhase": "extraTime",
+      "derivedOutcome": null,
+      "opponentGoals": 1,
+      "shootout": null,
+      "userGoals": 0,
+      "userResult": "loss",
+    },
+    "format": {
+      "extraTimeMinutes": 30,
+      "extraTimeRule": "fullExtraTime",
+      "regulationMinutes": 90,
+      "regulationStoppage": 0,
+      "shootoutOnTie": true,
+      "shootoutRegularRounds": 5,
+    },
+    "id": "esp-arg-2026-final",
+  },
+  {
+    "actualTerminal": {
+      "decidedPhase": "shootout",
+      "derivedOutcome": null,
+      "opponentGoals": 1,
+      "shootout": {
+        "attempts": [],
+        "completedRounds": 6,
+        "inSuddenDeath": true,
+        "opponentScore": 4,
+        "userScore": 3,
+      },
+      "userGoals": 1,
+      "userResult": "loss",
+    },
+    "format": {
+      "extraTimeMinutes": 30,
+      "extraTimeRule": "fullExtraTime",
+      "regulationMinutes": 90,
+      "regulationStoppage": 0,
+      "shootoutOnTie": true,
+      "shootoutRegularRounds": 5,
+    },
+    "id": "ger-par-2026-r32",
+  },
+  {
+    "actualTerminal": {
+      "decidedPhase": "goldenGoal",
+      "derivedOutcome": null,
+      "opponentGoals": 1,
+      "shootout": null,
+      "userGoals": 2,
+      "userResult": "win",
+    },
+    "format": {
+      "extraTimeMinutes": 30,
+      "extraTimeRule": "suddenDeath",
+      "regulationMinutes": 90,
+      "regulationStoppage": 0,
+      "shootoutOnTie": true,
+      "shootoutRegularRounds": 5,
+    },
+    "id": "kor-ita-2002",
+  },
+]
+`;
