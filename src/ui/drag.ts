@@ -165,6 +165,7 @@ export interface DragController {
   onPointerMove: (event: PointerEvent<HTMLElement>) => void;
   onPointerUp: (event: PointerEvent<HTMLElement>) => void;
   onPointerCancel: (event: PointerEvent<HTMLElement>) => void;
+  onLostPointerCapture: (event: PointerEvent<HTMLElement>) => void;
 }
 
 export function useDragController(config: DragConfig): DragController {
@@ -183,7 +184,7 @@ export function useDragController(config: DragConfig): DragController {
 
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLElement>, itemId: string): void => {
-      dispatch(
+      const result = dispatch(
         {
           type: "down",
           pointerId: event.pointerId,
@@ -194,6 +195,9 @@ export function useDragController(config: DragConfig): DragController {
         },
         event.timeStamp,
       );
+      if (result.state.pointerId === event.pointerId) {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
     },
     [dispatch],
   );
@@ -208,9 +212,6 @@ export function useDragController(config: DragConfig): DragController {
 
       if (ownsPointer && result.state.phase === "dragging") {
         event.preventDefault();
-        if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
-          event.currentTarget.setPointerCapture(event.pointerId);
-        }
       }
     },
     [dispatch],
@@ -230,10 +231,8 @@ export function useDragController(config: DragConfig): DragController {
         { type: "up", pointerId: event.pointerId, x: event.clientX, y: event.clientY },
         event.timeStamp,
       );
-      if (wasDragging) {
-        event.preventDefault();
-        releasePointerCapture(event);
-      }
+      if (wasDragging) event.preventDefault();
+      if (ownsPointer) releasePointerCapture(event);
     },
     [dispatch, releasePointerCapture],
   );
@@ -241,14 +240,21 @@ export function useDragController(config: DragConfig): DragController {
   const onPointerCancel = useCallback(
     (event: PointerEvent<HTMLElement>): void => {
       const ownsPointer = stateRef.current.pointerId === event.pointerId;
-      const wasDragging = ownsPointer && stateRef.current.phase === "dragging";
       dispatch({ type: "cancel", pointerId: event.pointerId }, event.timeStamp);
-      if (wasDragging) {
-        releasePointerCapture(event);
-      }
+      if (ownsPointer) releasePointerCapture(event);
     },
     [dispatch, releasePointerCapture],
   );
 
-  return { state, onPointerDown, onPointerMove, onPointerUp, onPointerCancel };
+  const onLostPointerCapture = useCallback(
+    (event: PointerEvent<HTMLElement>): void => {
+      const state = stateRef.current;
+      if (state.pointerId === event.pointerId && (state.phase === "pending" || state.phase === "dragging")) {
+        dispatch({ type: "cancel", pointerId: event.pointerId }, event.timeStamp);
+      }
+    },
+    [dispatch],
+  );
+
+  return { state, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onLostPointerCapture };
 }

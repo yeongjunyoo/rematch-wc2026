@@ -10,13 +10,18 @@ export interface SquadPlayer {
 
 type Squad = { readonly starters: readonly SquadPlayer[]; readonly bench: readonly SquadPlayer[] };
 
-// Full lineups and benches are not available for every source record. Numbered players are explicit reconstructions.
-const reconstructed = (id: string, position: SquadPlayer["position"]): SquadPlayer => ({
-  id,
-  label: position === "GK" ? "GK" : `${position} ${id.slice(-1)}`,
-  position,
-  confirmed: false,
-});
+// 출처에 선발과 벤치 전체가 남지 않은 경기가 있다. 이름을 지어내지 않고 포지션 라벨로만 표기하며
+// confirmed false로 재구성임을 드러낸다. id 끝에 숫자가 있으면 그 숫자를 순번으로 붙인다.
+// 순수 함수로 유지한다. 모듈 수준 가변 상태를 두지 않는다.
+const reconstructed = (id: string, position: SquadPlayer["position"]): SquadPlayer => {
+  const ordinal = /(\d+)$/.exec(id)?.[1];
+  return {
+    id,
+    label: ordinal === undefined ? position : `${position} ${ordinal}`,
+    position,
+    confirmed: false,
+  };
+};
 
 const line = (prefix: string, confirmedPlayers: readonly SquadPlayer[], formation: FormationPreset): readonly SquadPlayer[] => {
   const positions: Record<FormationPreset, readonly SquadPlayer["position"][]> = {
