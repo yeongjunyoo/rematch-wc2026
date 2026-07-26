@@ -21,13 +21,22 @@
 | 최종 스코어 | 남아공 1, 대한민국 0 | `confirmed` |
 | 결승골 | 63분 Thapelo Maseko. 오른쪽에서 받아 왼발 낮은 슛, 12야드, 오른쪽 코너 | `confirmed` |
 | 대회 결과 | 남아공 조 2위로 사상 첫 월드컵 녹아웃 진출, 대한민국 조 3위 탈락 | `confirmed` |
-| 진출 조건 | 대한민국은 무승부만 해도 진출권 안에 있었다 | `confirmed` |
-| 손흥민 벤치 스타트 | 이 대회에서 월드컵 커리어 첫 벤치 스타트 | `confirmed` |
+| 진출 조건 | 대한민국은 무승부만 해도 진출권 안에 있었다 | `confirmed` (단 주의: 실제 기제는 8개 최고 3위 팀 순위였고, 무승부면 충분하다는 서술은 경기 전후 보도에 근거한다. 그래서 범용 순위표 엔진을 만들지 않고 승과 무와 패 3행 truth table로 고정했다) |
+| 손흥민 벤치 스타트 | 이 대회에서 월드컵 커리어 첫 벤치 스타트. 무승부면 진출이라 감독이 주장을 아꼈다 | `confirmed` |
+| 주장 완장 | 손흥민이 벤치라 김민재가 주장 | `confirmed` |
+| 경기장 | Estadio BBVA (몬테레이) | `confirmed` |
+| 최우수 선수 | Thapelo Maseko | `confirmed` |
+| 감독 | 대한민국 홍명보, 남아공 Hugo Broos | `confirmed` |
 | 감독 사퇴 | 홍명보 감독 2026-06-28 사퇴 | `confirmed` |
-| 선발 11명 전체 | 미확보 | D4까지 보강 필요 |
+| 대한민국 선발 11 | 김승규, 이한범, 김민재, 이기혁, 설영우, 백승호, 황인범, 이태석, 이강인, 황희찬, 오현규 (3-4-2-1) | `confirmed` |
+| 남아공 선발 11 | Ronwen Williams, Khuliso Mudau, Mbekezeli Mbokazi, Ime Okon, Aubrey Modiba, Thalente Mbatha, Sphephelo Sithole, Thapelo Maseko, Relebohile Mofokeng, Oswin Appollis, Evidence Makgopa | `confirmed` |
 | 교체 시각 전체 | 미확보 | D4까지 보강 필요 |
 
-출처: 위키백과 2026 FIFA World Cup Group A, 공개 보도(Korea Times 06-28, Al Jazeera 06-25, olympics.com 한국어판).
+날짜 주의: 위키백과는 A조 기간을 2026-06-11부터 06-24까지로 적고 현지 시각 기준이라고 명시한다. 일부 라인업 사이트는 같은 경기를 06-25로 표기하는데 이는 UTC 환산으로 보인다. 이 문서와 시나리오 데이터는 **현지 기준 06-24**를 쓴다.
+
+톤 주의: 홍명보 감독 사퇴 보도에는 대통령의 강한 비판과 전술 경직성 비판이 함께 실려 있다. **정치적 논평과 인물 비하는 인용하지 않는다.** 사퇴 사실만 쓰고 평가는 넣지 않는다.
+
+출처: 위키백과 2026 FIFA World Cup Group A (경기 서술과 조 기간), World Soccer Talk 확정 라인업, ysscores 경기장과 감독, FIFA 매치센터 400021445.
 
 ## 2. 대한민국 2-1 체코 (2026-06-11, A조 1차전)
 
