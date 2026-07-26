@@ -53,18 +53,18 @@ describe("rng", () => {
     expect(Array.from({ length: 20 }, first)).not.toEqual(Array.from({ length: 20 }, second));
   });
 
-  it("worldDraw는 개입과 무관하게 고정된다 (반사실 대조)", () => {
+  it("worldDraw는 지문을 받지 않는다: 원시 함수 수준의 결정론과 API 분리", () => {
     const unchanged = intervention();
     const changed = intervention({ directives: { ...directives, tempo: 1 } });
     const fpA = fingerprintIntervention(unchanged);
     const fpB = fingerprintIntervention(changed);
 
     expect(fpA).not.toBe(fpB);
+    expect(worldDraw.length).toBe(3);
 
-    // 반사실 대조: 개입이 다른 두 경로에서 외생 추출 흐름 전체를 각각 수집한다.
-    // worldDraw는 지문을 인자로 받지 않으므로 두 경로의 trace가 완전히 동일해야 한다.
-    // 이것이 "슬라이더 한 칸이 미래 난수를 갈아버리지 않는다"는 계약의 실증이다.
-    const traceFor = (_fingerprint: string): number[] => {
+    // 원시 함수 수준에서 worldDraw는 같은 인자를 받으면 같은 외생 추출을 반환한다.
+    // 진짜 반사실 검증은 D2에 시뮬레이션 runner가 생기면 그 runner가 방출한 world trace를 두 개입 경로에서 비교하는 통합 테스트로 한다.
+    const traceFor = (): number[] => {
       const out: number[] = [];
       for (let minute = 63; minute <= 90; minute += 1) {
         out.push(worldDraw(world, "chance", minute));
@@ -74,15 +74,14 @@ describe("rng", () => {
       return out;
     };
 
-    const traceA = traceFor(fpA);
-    const traceB = traceFor(fpB);
+    const traceA = traceFor();
+    const traceB = traceFor();
 
     expect(traceA).toHaveLength(28 * 3);
     expect(traceB).toEqual(traceA);
-    // 흐름이 상수로 붕괴하지 않았는지도 확인한다(전부 같은 값이면 대조가 무의미하다).
     expect(new Set(traceA).size).toBeGreaterThan(1);
 
-    // 같은 경로에서 decisionDraw만 지문에 따라 갈린다.
+    // decisionDraw만 지문에 따라 갈린다.
     const decisionA = traceA.map((_, i) => decisionDraw(world, fpA, "ai-tiebreak", 63 + i));
     const decisionB = traceA.map((_, i) => decisionDraw(world, fpB, "ai-tiebreak", 63 + i));
     expect(decisionB).not.toEqual(decisionA);

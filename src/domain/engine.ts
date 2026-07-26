@@ -29,10 +29,11 @@ export function advanceClock(clock: MatchClock, _format: MatchFormat): MatchCloc
   };
 }
 
+// Pass null explicitly when no rule applies; omission is a compile-time error.
 export function stepPhase(
   state: MatchState,
   format: MatchFormat,
-  derivedOutcomeRule: DerivedOutcomeRule | null = null,
+  derivedOutcomeRule: DerivedOutcomeRule | null,
 ): { state: MatchState; changed: PhaseChangeEvent | null } {
   if (state.clock.phase === "regulation") {
     if (state.clock.minute < format.regulationMinutes + format.regulationStoppage) {
@@ -73,11 +74,12 @@ export function stepPhase(
   return { state, changed: null };
 }
 
+// Pass null explicitly when no rule applies; omission is a compile-time error.
 export function applyGoal(
   state: MatchState,
   format: MatchFormat,
   goal: { side: Side; scorerId: string; kind: GoalKind; assistId?: string },
-  derivedOutcomeRule: DerivedOutcomeRule | null = null,
+  derivedOutcomeRule: DerivedOutcomeRule | null,
 ): MatchState {
   if (state.clock.phase === "finished" || state.clock.phase === "shootout") {
     return state;
@@ -105,11 +107,12 @@ export function applyGoal(
   return scored;
 }
 
+// Pass null explicitly when no rule applies; omission is a compile-time error.
 export function applyPenaltyAttempt(
   state: MatchState,
   format: MatchFormat,
   attempt: { side: Side; takerId: string; result: PenaltyResult },
-  derivedOutcomeRule: DerivedOutcomeRule | null = null,
+  derivedOutcomeRule: DerivedOutcomeRule | null,
 ): MatchState {
   if (state.clock.phase !== "shootout" || state.shootout === null) {
     return state;
