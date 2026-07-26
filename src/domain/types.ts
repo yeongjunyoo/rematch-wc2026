@@ -169,6 +169,8 @@ export interface ShootoutState {
   readonly completedRounds: number;
   /** 정규 라운드를 모두 소진하고 서든데스에 들어갔는가. */
   readonly inSuddenDeath: boolean;
+  /** 다음 페널티를 찰 side. */
+  readonly nextSide?: Side;
   readonly attempts: readonly PenaltyAttemptEvent[];
 }
 

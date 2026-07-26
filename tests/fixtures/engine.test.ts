@@ -123,6 +123,44 @@ describe("종료 상태기", () => {
     expect(result.terminal).toMatchObject({ decidedPhase: "shootout", userResult: "win" });
   });
 
+  it("승부차기에서 같은 side의 연속 시도는 거부한다", () => {
+    const format: MatchFormat = { ...fullExtraTime, extraTimeRule: "none" };
+    const entered = stepPhase(state(), format).state;
+
+    expect(entered.shootout?.nextSide).toBe("user");
+    expect(() => take(entered, format, "opponent", "scored")).toThrow("Expected user");
+  });
+
+  it("정규 라운드를 소진한 side의 추가 시도는 거부한다", () => {
+    const format: MatchFormat = { ...fullExtraTime, extraTimeRule: "none" };
+    let result = stepPhase(state(), format).state;
+    for (let round = 0; round < 5; round += 1) {
+      result = take(result, format, "user", "scored");
+      result = take(result, format, "opponent", "scored");
+    }
+    const beforeSuddenDeath = {
+      ...result,
+      shootout: { ...result.shootout!, inSuddenDeath: false, nextSide: "user" as const },
+    };
+
+    expect(() => take(beforeSuddenDeath, format, "user", "scored")).toThrow("Regular shootout rounds");
+  });
+
+  it("서든데스는 한 쌍이 완성되기 전에는 종료하지 않는다", () => {
+    const format: MatchFormat = { ...fullExtraTime, extraTimeRule: "none" };
+    let result = stepPhase(state(), format).state;
+    for (let round = 0; round < 5; round += 1) {
+      result = take(result, format, "user", "scored");
+      result = take(result, format, "opponent", "scored");
+    }
+
+    result = take(result, format, "user", "scored");
+
+    expect(result.clock.phase).toBe("shootout");
+    expect(result.terminal).toBeNull();
+    expect(result.shootout?.nextSide).toBe("opponent");
+  });
+
   it("사용자가 진 팀을 지휘해도 관점 상대적으로 패배를 반환한다", () => {
     const result = stepPhase(state({ opponentGoals: 1 }), fullExtraTime).state;
 

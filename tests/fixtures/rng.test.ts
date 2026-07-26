@@ -53,12 +53,39 @@ describe("rng", () => {
     expect(Array.from({ length: 20 }, first)).not.toEqual(Array.from({ length: 20 }, second));
   });
 
-  it("worldDraw는 개입과 무관하게 고정된다", () => {
+  it("worldDraw는 개입과 무관하게 고정된다 (반사실 대조)", () => {
     const unchanged = intervention();
     const changed = intervention({ directives: { ...directives, tempo: 1 } });
+    const fpA = fingerprintIntervention(unchanged);
+    const fpB = fingerprintIntervention(changed);
 
-    expect(fingerprintIntervention(unchanged)).not.toBe(fingerprintIntervention(changed));
-    expect(worldDraw(world, "chance", 72)).toBe(worldDraw(world, "chance", 72));
+    expect(fpA).not.toBe(fpB);
+
+    // 반사실 대조: 개입이 다른 두 경로에서 외생 추출 흐름 전체를 각각 수집한다.
+    // worldDraw는 지문을 인자로 받지 않으므로 두 경로의 trace가 완전히 동일해야 한다.
+    // 이것이 "슬라이더 한 칸이 미래 난수를 갈아버리지 않는다"는 계약의 실증이다.
+    const traceFor = (_fingerprint: string): number[] => {
+      const out: number[] = [];
+      for (let minute = 63; minute <= 90; minute += 1) {
+        out.push(worldDraw(world, "chance", minute));
+        out.push(worldDraw(world, "lane", minute));
+        out.push(worldDraw(world, "conversion", minute));
+      }
+      return out;
+    };
+
+    const traceA = traceFor(fpA);
+    const traceB = traceFor(fpB);
+
+    expect(traceA).toHaveLength(28 * 3);
+    expect(traceB).toEqual(traceA);
+    // 흐름이 상수로 붕괴하지 않았는지도 확인한다(전부 같은 값이면 대조가 무의미하다).
+    expect(new Set(traceA).size).toBeGreaterThan(1);
+
+    // 같은 경로에서 decisionDraw만 지문에 따라 갈린다.
+    const decisionA = traceA.map((_, i) => decisionDraw(world, fpA, "ai-tiebreak", 63 + i));
+    const decisionB = traceA.map((_, i) => decisionDraw(world, fpB, "ai-tiebreak", 63 + i));
+    expect(decisionB).not.toEqual(decisionA);
   });
 
   it("decisionDraw는 행동 지문이 달라지면 바뀐다", () => {
