@@ -60,6 +60,8 @@ describe("ratings", () => {
     const open = directiveWeights({ ...neutral, mindset: 2 });
     expect(open.userChance).toBeGreaterThan(cautious.userChance);
     expect(open.concede).toBeGreaterThan(cautious.concede);
+    expect(open.userChance / cautious.userChance).toBeGreaterThan(2);
+    expect(open.concede / cautious.concede).toBeGreaterThan(1.75);
   });
 
   it("reduces stamina with elapsed minutes while staying inside bounds", () => {

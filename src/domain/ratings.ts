@@ -68,11 +68,13 @@ export function directiveWeights(directives: TacticalDirectives): {
   const mindset = normalizeDirective(directives.mindset);
 
   return {
-    userChance: 1 + defensiveLine * 0.02 + pressing * 0.015 + tempo * 0.03 + attackRoute * 0.01 + mindset * 0.04,
-    opponentChance: 1 + defensiveLine * 0.015 - pressing * 0.015 + tempo * 0.02 + mindset * 0.03,
-    conversion: 1 + tempo * 0.01 - attackRoute * 0.015 + mindset * 0.015,
-    concede: 1 + defensiveLine * 0.04 + tempo * 0.01 + mindset * 0.05,
-    staminaDrain: 1 + pressing * 0.12 + tempo * 0.04 + mindset * 0.02,
+    // A full-axis change moves chance volume enough to survive deterministic draw cutoffs.
+    // Openness deliberately amplifies both attacking volume and defensive exposure.
+    userChance: Math.max(0.2, 1 + defensiveLine * 0.16 + pressing * 0.2 + tempo * 0.3 + attackRoute * 0.14 + mindset * 0.4),
+    opponentChance: Math.max(0.2, 1 + defensiveLine * 0.16 - pressing * 0.2 + tempo * 0.3 + mindset * 0.4),
+    conversion: 1 + tempo * 0.32 + attackRoute * 0.12 + mindset * 0.38,
+    concede: 1 + defensiveLine * 0.22 + pressing * 0.05 + tempo * 0.14 + mindset * 0.29,
+    staminaDrain: 1 + pressing * 0.16 + tempo * 0.08 + mindset * 0.05,
   };
 }
 

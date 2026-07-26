@@ -22,30 +22,18 @@ function startState(scenario: ScenarioDeclaration, responseBudget = 2): MatchSta
   };
 }
 
-function intervention(scenario: ScenarioDeclaration, directives: TacticalDirectives): Intervention {
-  return {
-    tokenIndex: 0,
-    atMinute: scenario.interventionStartMinute,
-    directives,
-    formation: defaultFormation(scenario.id),
-    placements: initialPlacements(scenario.id),
-    substitutions: [],
-  };
+function intervention(scenario: ScenarioDeclaration, directives: TacticalDirectives, placements = initialPlacements(scenario.id)): Intervention {
+  return { tokenIndex: 0, atMinute: scenario.interventionStartMinute, directives, formation: defaultFormation(scenario.id), placements, substitutions: [] };
 }
 
 function input(scenario: ScenarioDeclaration, directives: TacticalDirectives = NEUTRAL_DIRECTIVES, responseBudget = 2) {
-  return {
-    scenario,
-    world: deriveWorldSeed(scenario.id, 0, scenario.publishedSeedDeck, "d2", "d2"),
-    interventions: [intervention(scenario, directives)],
-    startState: startState(scenario, responseBudget),
-  };
+  return { scenario, world: deriveWorldSeed(scenario.id, 0, scenario.publishedSeedDeck, "d2", "d2"), interventions: [intervention(scenario, directives)], startState: startState(scenario, responseBudget) };
 }
 
 const attacking: TacticalDirectives = { defensiveLine: 2, pressing: 2, tempo: 2, attackRoute: 2, mindset: 2 };
 const cautious: TacticalDirectives = { defensiveLine: -2, pressing: -2, tempo: -2, attackRoute: -2, mindset: -2 };
 
-describe("D2 simulation runner", () => {
+describe("D3 simulation runner", () => {
   it("finishes every declared scenario with terminal facts", () => {
     for (const scenario of SCENARIOS) {
       const result = simulateToTerminal(input(scenario));
@@ -82,9 +70,7 @@ describe("D2 simulation runner", () => {
     const withoutBudget = simulateToTerminal(input(scenario, attacking, 0));
     expect(withoutBudget.timeline.some((event) => event.type === "aiCounter")).toBe(false);
     const withBudget = simulateToTerminal(input(scenario, attacking));
-    for (const event of withBudget.timeline) {
-      if (event.type === "aiCounter") expect(event.exposedWeakness).not.toBe("");
-    }
+    for (const event of withBudget.timeline) if (event.type === "aiCounter") expect(event.exposedWeakness).not.toBe("");
   });
 
   it("fails explicitly instead of diverging when the minute cap is already exhausted", () => {
@@ -95,7 +81,35 @@ describe("D2 simulation runner", () => {
   it("applies the South Africa advancement rule to drawn or winning terminal states", () => {
     const scenario = SCENARIOS[0]!;
     const result = simulateToTerminal(input(scenario, attacking));
-    const terminal = result.state.terminal!;
-    expect(terminal.derivedOutcome?.achieved).toBe(terminal.userResult !== "loss");
+    expect(result.state.terminal!.derivedOutcome?.achieved).toBe(result.state.terminal!.userResult !== "loss");
+  });
+
+  it("uses placement fitness in team chance expectations", () => {
+    const scenario = SCENARIOS[0]!;
+    const normal = simulateWithTrace(input(scenario, attacking));
+    const placements = initialPlacements(scenario.id);
+    const goalkeeper = placements[0]!;
+    const forward = placements[placements.length - 1]!;
+    const poorFit = placements.map((placement) => placement.playerId === goalkeeper.playerId ? { ...placement, slot: forward.slot } : placement.playerId === forward.playerId ? { ...placement, slot: goalkeeper.slot } : placement);
+    const misplaced = simulateWithTrace({ ...input(scenario, attacking), interventions: [intervention(scenario, attacking, poorFit)] });
+    expect(misplaced.expectedChanceTrace).not.toEqual(normal.expectedChanceTrace);
+  });
+
+  it("lowers expected chance rate as stamina drains", () => {
+    const trace = simulateWithTrace(input(SCENARIOS[0]!, NEUTRAL_DIRECTIVES)).expectedChanceTrace.filter((entry) => entry.side === "user");
+    expect(trace[trace.length - 1]!.expected).toBeLessThan(trace[0]!.expected);
+  });
+
+  it("records a bounded AI counter only after its observation lag", () => {
+    const scenario = SCENARIOS[0]!;
+    const delayed = { ...startState(scenario, 2), ai: { ...startState(scenario, 2).ai, observationLagMinutes: 2, riskTolerance: 4 } };
+    const result = simulateToTerminal({ ...input(scenario, attacking), startState: delayed });
+    const counter = result.timeline.find((event) => event.type === "aiCounter");
+    expect(counter).toBeDefined();
+    expect(counter!.clock.absoluteMinute).toBeGreaterThanOrEqual(scenario.interventionStartMinute + 2);
+  });
+
+  it("never records an AI counter when its budget is zero", () => {
+    expect(simulateToTerminal(input(SCENARIOS[0]!, attacking, 0)).timeline.some((event) => event.type === "aiCounter")).toBe(false);
   });
 });
