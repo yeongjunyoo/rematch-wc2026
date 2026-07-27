@@ -45,7 +45,7 @@ try {
   await page.goto("#/match/za-kor-2026");
   check("매치룸이 63분에서 멈춰 시작한다", (await page.text()).includes("63분"));
   check("4배속을 고를 수 있다", await page.clickText("4배속"));
-  check("경기를 재개할 수 있다", await page.clickText("그냥 지켜본다"));
+  check("경기를 재개할 수 있다", await page.clickText("경기 재개"));
   // 시계는 마크업이 아니라 제품이 노출하는 스냅샷에서 읽는다. 화면 구조가 바뀌어도 계약은 그대로다.
   const clockNow = async () => (await page.snapshot())?.detail?.현재시각 ?? "";
   await waitFor(async () => !String(await clockNow()).startsWith("63"), 12000, "경기 시계가 흐르지 않았습니다");

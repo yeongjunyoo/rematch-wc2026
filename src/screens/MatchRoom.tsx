@@ -205,7 +205,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
           if (isDugoutOpen) return ["포메이션", "팀 지시", "개입 확정", "취소", "닫기"];
           if (isFinished(runtime)) return ["결과 리포트 보기", "새 리매치 시작", "홈으로 돌아가기"];
           const notStarted = runtime.state.clock.absoluteMinute === scenario.interventionStartMinute && runtime.state.events.length === 0;
-          if (notStarted) return ["전술 바꾸기", "그냥 지켜본다", "끝까지 건너뛰기", "홈으로 돌아가기"];
+          if (notStarted) return ["전술 바꾸기", "경기 재개", "끝까지 건너뛰기", "홈으로 돌아가기"];
           return [playing ? "일시정지" : "경기 재개", "전술 바꾸기", "끝까지 건너뛰기", "1배속", "2배속", "4배속", "홈으로 돌아가기"];
         })(),
         detail: {
@@ -287,7 +287,8 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
     <main className="page">
       <header className="screen-header">
         <p className="eyebrow">매치룸, {attemptIndex + 1}번째 시도</p>
-        <h1>{scenario.displayTitle}</h1>
+        <h1>{scenario.userTeam.displayName} 대 {scenario.opponentTeam.displayName}</h1>
+        <p className="match-history-line">실제로는 {scenario.actualTerminal.userGoals}대{scenario.actualTerminal.opponentGoals}로 끝난 경기입니다. 지금 점수는 위 기록판을 보세요.</p>
       </header>
 
       <MatchHud
@@ -339,9 +340,8 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
             */}
             <div className="kickoff-actions">
               <button type="button" className="kickoff-primary" onClick={openDugout}>전술 바꾸기</button>
-              <button type="button" className="kickoff-secondary" onClick={() => setPlaying(true)}>그냥 지켜본다</button>
             </div>
-            <span>전술을 바꾸지 않으면 역사는 그대로 반복됩니다. 개입 토큰 {tokensRemaining}개를 쓸 수 있습니다.</span>
+            <span>전술을 바꾸지 않으면 역사는 그대로 반복됩니다. 개입 토큰 {tokensRemaining}개를 쓸 수 있습니다. 그냥 지켜보려면 위의 경기 재개를 누르세요.</span>
           </div>
         ) : null}
         {!finished ? null : (
