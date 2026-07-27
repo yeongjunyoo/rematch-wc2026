@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import "../ui/dugout.css";
 import type { KeyboardEvent, PointerEvent } from "react";
 import { applyPreset, clampDirectives, clampToPitch, fitness, FORMATION_SLOTS, snapToNearestSlot, substitute, swapPlacements } from "../domain/tactics";
+import { directiveWeights } from "../domain/ratings";
 import type { FormationPreset, Intervention, Placement, TacticalDirectives } from "../domain/types";
 import { diffIntervention } from "../domain/rng";
 import { DRAG_HANDLE_STYLE, SCROLL_REGION_STYLE, useDragController } from "../ui/drag";
@@ -63,6 +64,14 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
   const activePlayer = activePlayerId === null ? undefined : players.get(activePlayerId);
   const cardsRemaining = Math.max(0, 3 - cardsUsed);
   const benchPlayers = squad.bench.filter((player) => !placements.some((placement) => placement.playerId === player.id));
+  // 확정 전에 지금 설정이 얼마나 센지를 도메인 계수 그대로 보여준다. 지어낸 수치가 아니라
+  // 시뮬레이션이 실제로 쓰는 값이라 사용자가 본 것과 경기가 하는 것이 어긋나지 않는다.
+  const weights = directiveWeights(clampDirectives(directives));
+  const chanceShift = Math.round((weights.userChance - 1) * 100);
+  const exposureShift = Math.round((weights.concede - 1) * 100);
+  const shiftWord = (value: number) => value === 0 ? "그대로" : value > 0 ? `${value}퍼센트 증가` : `${Math.abs(value)}퍼센트 감소`;
+  const tacticPreview = `지금 설정이면 우리 기회는 ${shiftWord(chanceShift)}, 상대에게 내주는 위험은 ${shiftWord(exposureShift)}입니다.`;
+
   const statusGuide = cardsRemaining === 0
     ? "교체 카드를 모두 사용했습니다. 포메이션과 팀 지시는 바꿀 수 있습니다."
     : selectedBenchId === null
@@ -225,6 +234,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
     <section ref={dialogRef} className="dugout-overlay" role="dialog" aria-modal="true" tabIndex={-1} aria-label="더그아웃 전술 편집" onKeyDown={handleDialogKeyDown} onPointerDown={startDrag} onPointerMove={drag.onPointerMove} onPointerUp={finishDrag} onPointerCancel={drag.onPointerCancel} onLostPointerCapture={drag.onLostPointerCapture}>
       <header className="dugout-header"><div><p className="eyebrow">더그아웃, {minute}분</p><h2>개입 {tokenIndex + 1}</h2></div><button ref={closeButtonRef} type="button" className="text-button" onClick={onClose}>닫기</button></header>
       <p className="dg-status-guide" role="status">{statusGuide}</p>
+      <p className="dg-tactic-preview" role="status">{tacticPreview}</p>
       <section className="bench" aria-label="벤치 선수" style={SCROLL_REGION_STYLE}>
         <p>벤치, 교체 카드 {cardsRemaining}장{cardsRemaining > 0 ? ". 누르면 넣을 선수로 선택됩니다" : ""}</p>
         <div className="dg-bench-scroll-frame">
