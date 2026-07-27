@@ -1,0 +1,159 @@
+.hm-page {
+  overflow-x: clip;
+}
+
+.hm-hero {
+  padding-bottom: clamp(2rem, 6vw, 3.5rem);
+}
+
+.hm-section-heading {
+  margin-bottom: 1.25rem;
+}
+
+.hm-section-heading h2 {
+  margin-bottom: 0;
+}
+
+.hm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.hm-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid #cbd1cd;
+  border-radius: 0.8rem;
+  background: #fafbf8;
+}
+
+.hm-card-featured {
+  grid-column: span 2;
+  padding: clamp(1.35rem, 4vw, 2rem);
+  border: 2px solid #0d6261;
+  background: #eef6f4;
+}
+
+.hm-featured-label {
+  margin-bottom: 0.65rem;
+  color: #0d6261;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.hm-card h3 {
+  margin-bottom: 0.65rem;
+}
+
+.hm-meta {
+  margin-bottom: 0.8rem;
+  color: #50605c;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.hm-situation {
+  margin-bottom: 0.8rem;
+  padding: 0.7rem 0.8rem;
+  border-left: 4px solid #0d6261;
+  background: #d8f0a4;
+  color: #173c37;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.hm-mission {
+  margin-bottom: 0.65rem;
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.hm-history {
+  margin-top: auto;
+  border-top: 1px solid #dde1de;
+}
+
+.hm-history > summary {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.25rem;
+  color: #0d6261;
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+.hm-history > summary::-webkit-details-marker {
+  display: none;
+}
+
+.hm-history > summary::before {
+  content: "+";
+  margin-right: 0.5rem;
+  font-size: 1.15rem;
+}
+
+.hm-history[open] > summary::before {
+  content: "−";
+}
+
+.hm-history p {
+  margin: 0 0 0.9rem;
+  color: #50605c;
+  font-size: 0.91rem;
+  line-height: 1.6;
+}
+
+.hm-action {
+  min-height: 2.75rem;
+  margin-top: 0.85rem;
+  text-align: center;
+}
+
+.hm-action:focus-visible,
+.hm-history > summary:focus-visible {
+  outline: 3px solid #d8f0a4;
+  outline-offset: 3px;
+}
+
+.hm-footer {
+  padding-top: 2rem;
+}
+
+@media (max-width: 640px) {
+  .hm-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hm-card-featured {
+    grid-column: auto;
+  }
+
+  .hm-card {
+    padding: 1.15rem;
+  }
+
+  .hm-action {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-page *,
+  .hm-page *::before,
+  .hm-page *::after {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+  }
+}
+
+/* 제목 카피 아래 한 줄. 카피는 서사를 세우고 이 줄은 무엇을 하는 게임인지를 세운다. */
+.hm-what { margin: .55rem 0 0; color: #50605c; font-size: clamp(.95rem, 2.6vw, 1.05rem); line-height: 1.55; }

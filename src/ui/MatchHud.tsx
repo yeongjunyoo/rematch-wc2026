@@ -98,7 +98,13 @@ export function MatchHud({
             </button>
           ))}
         </div>
-        <button type="button" className="mh-skip-button" onClick={onSkip} disabled={finished}>
+        <button
+          type="button"
+          className="mh-skip-button"
+          onClick={onSkip}
+          disabled={finished}
+          title={tokensRemaining === totalTokens ? "전술을 한 번도 바꾸지 않고 결과만 봅니다" : undefined}
+        >
           끝까지 건너뛰기
         </button>
       </div>

@@ -169,6 +169,9 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
       window.sessionStorage.setItem(`rematch:result:${scenario.id}:${attemptIndex}`, JSON.stringify({
         state: runtime.state,
         timeline: runtime.state.events,
+        // 리포트가 내 결정이 무엇이었는지를 말하려면 확정한 개입이 결과에 함께 실려야 한다.
+        // 이것이 없어 축구 팬 페르소나가 리포트에 내가 손흥민을 투입했다는 기록조차 없다고 했다.
+        interventions: runtime.interventions.slice(0, runtime.appliedCount),
         matchCode: code,
         attemptIndex,
       }));

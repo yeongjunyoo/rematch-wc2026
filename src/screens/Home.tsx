@@ -1,46 +1,68 @@
 import { SCENARIOS } from "../data/scenarios";
 import { useAgentSnapshot } from "../agent/bridge";
+import "../ui/home.css";
+
+function scenarioActionLabel(scenario: (typeof SCENARIOS)[number]): string {
+  return `${scenario.userTeam.displayName} 벤치, ${scenario.interventionStartMinute}분`;
+}
+
+const SCENARIO_AFFORDANCES = SCENARIOS.map(scenarioActionLabel);
+
+/**
+ * 첫 카드의 상황 한 줄.
+ * 선언된 사실에서만 만든다. 문장을 박아 두면 시나리오 순서가 바뀔 때 그대로 거짓말이 된다.
+ */
+function situationLine(scenario: (typeof SCENARIOS)[number]): string {
+  const { startingUserGoals: mine, startingOpponentGoals: theirs } = scenario;
+  const standing = mine < theirs ? "지고 있습니다" : mine > theirs ? "이기고 있습니다" : "비기고 있습니다";
+  return `${scenario.interventionStartMinute}분, ${scenario.userTeam.displayName}은 ${mine}대${theirs}로 ${standing}.`;
+}
 
 export function Home() {
   useAgentSnapshot({
     screen: "home",
-    headline: "REMATCH, 손흥민이 벤치에 있던 그 밤을 당신이 다시 지휘한다",
-    affordances: [...SCENARIOS.map((scenario) => `${scenario.userTeam.displayName} 벤치, ${scenario.interventionStartMinute}분`), "도움말과 데이터 안내"],
-    detail: Object.fromEntries(SCENARIOS.map((scenario, index) => [`경기${index + 1}`, `${scenario.displayTitle}, ${scenario.interventionStartMinute}분 ${scenario.startingUserGoals}대${scenario.startingOpponentGoals}, ${scenario.mission.brief}`])),
+    headline: "REMATCH, 손흥민이 벤치에 있던 그 밤을 당신이 다시 지휘한다. 월드컵의 결정적 순간에서 전술로 결과를 다시 쓰는 게임",
+    affordances: [...SCENARIO_AFFORDANCES, "도움말과 데이터 안내"],
+    detail: Object.fromEntries(SCENARIOS.map((scenario, index) => [
+      `경기${index + 1}`,
+      `${scenario.id}, 지휘 팀 ${scenario.userTeam.displayName}, 이어받는 시점 ${scenario.interventionStartMinute}분 ${scenario.startingUserGoals}대${scenario.startingOpponentGoals}, 미션 ${scenario.mission.brief}`,
+    ])),
     feed: [],
   });
 
   return (
-    <main className="page">
-      <header className="hero">
+    <main className="page hm-page">
+      <header className="hero hm-hero">
         <p className="eyebrow">월드컵 전술 리매치</p>
         <h1>REMATCH</h1>
         <p className="hook">손흥민이 벤치에 있던 그 밤을, 당신이 다시 지휘한다</p>
+        <p className="hm-what">월드컵의 결정적 순간에서 전술로 결과를 다시 쓰는 게임</p>
       </header>
 
       <section aria-labelledby="scenario-heading">
-        <div className="section-heading">
-          <p className="eyebrow">다섯 개의 결정적 순간</p>
-          <h2 id="scenario-heading">벤치에 앉을 경기</h2>
+        <div className="section-heading hm-section-heading">
+          <p className="eyebrow">먼저, 이 한 경기를 지휘하세요</p>
+          <h2 id="scenario-heading">63분, 당신의 선택이 시작됩니다</h2>
         </div>
-        <div className="scenario-grid">
+        <div className="hm-grid">
           {SCENARIOS.map((scenario, index) => (
-            <article className={`scenario-card${index === 0 ? " featured" : ""}`} key={scenario.id}>
-              {index === 0 ? <p className="featured-label">첫 번째 리매치</p> : null}
+            <article className={`hm-card${index === 0 ? " hm-card-featured" : ""}`} key={scenario.id}>
+              {index === 0 ? <p className="hm-featured-label">첫 번째 리매치</p> : null}
               <h3>{scenario.displayTitle}</h3>
-              <dl className="scenario-meta">
-                <div><dt>지휘 팀</dt><dd>{scenario.userTeam.displayName}</dd></div>
-                <div><dt>이어받는 시점</dt><dd>{scenario.interventionStartMinute}분, {scenario.startingUserGoals}대{scenario.startingOpponentGoals}</dd></div>
-              </dl>
-              <p className="mission">{scenario.mission.brief}</p>
-              <p className="history-note">{scenario.historyNote}</p>
-              <a className="button-link" href={`#/match/${scenario.id}`}>{scenario.userTeam.displayName} 벤치, {scenario.interventionStartMinute}분</a>
+              <p className="hm-meta">{scenario.userTeam.displayName} 지휘, {scenario.interventionStartMinute}분부터, {scenario.startingUserGoals}대{scenario.startingOpponentGoals}</p>
+              {index === 0 ? <p className="hm-situation">{situationLine(scenario)}</p> : null}
+              <p className="hm-mission">{scenario.mission.brief}</p>
+              <details className="hm-history">
+                <summary>경기 기록 보기</summary>
+                <p>{scenario.historyNote}</p>
+              </details>
+              <a className="button-link hm-action" href={`#/match/${scenario.id}`}>{scenarioActionLabel(scenario)}</a>
             </article>
           ))}
         </div>
       </section>
 
-      <footer className="page-footer">
+      <footer className="page-footer hm-footer">
         <a href="#/help">도움말과 데이터 안내</a>
       </footer>
     </main>

@@ -1,0 +1,94 @@
+.rp-summary {
+  display: grid;
+  gap: .75rem;
+}
+
+.rp-outcome {
+  margin: 0;
+  color: #173c37;
+  font-size: clamp(1.15rem, 3vw, 1.45rem);
+  font-weight: 750;
+}
+
+.rp-decisions {
+  display: grid;
+  gap: .75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rp-decision {
+  padding: 1rem;
+  border: 1px solid #9caaa6;
+  border-left: 4px solid #0d6261;
+  border-radius: .5rem;
+  background: #fafbf8;
+}
+
+.rp-decision h3 {
+  margin-bottom: .6rem;
+  color: #173c37;
+  font-size: 1rem;
+}
+
+.rp-changes {
+  display: grid;
+  gap: .35rem;
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.5;
+}
+
+.rp-empty, .rp-why, .rp-next {
+  max-width: 48rem;
+  margin-bottom: 0;
+  line-height: 1.65;
+}
+
+.rp-tally {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .65rem;
+  margin: 1rem 0 0;
+}
+
+.rp-tally div {
+  min-width: 0;
+  padding: .75rem;
+  border-radius: .45rem;
+  background: #e5efed;
+}
+
+.rp-tally dt {
+  color: #50605c;
+  font-size: .78rem;
+}
+
+.rp-tally dd {
+  margin: .25rem 0 0;
+  color: #173c37;
+  font-size: 1.1rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.rp-next-action {
+  margin-top: 1rem;
+}
+
+.rp-next-action .button-link {
+  min-height: 2.75rem;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .rp-tally { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rp-decision { scroll-behavior: auto; }
+}
+
+/* 집계 범위 고지. 이어받은 뒤만 센다는 사실이 없으면 최종 스코어와 모순으로 읽힌다. */
+.rp-tally-scope { margin: .1rem 0 .8rem; color: #62706d; font-size: .86rem; line-height: 1.5; }

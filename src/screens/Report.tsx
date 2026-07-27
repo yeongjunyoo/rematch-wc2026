@@ -1,10 +1,12 @@
 import { compareToHistory, evaluateGrade } from "../domain/outcome";
 import { bestGrade, loadRecords } from "../domain/records";
-import type { DecidedPhase, GradeRequirement, MatchEvent, MatchState, TerminalFacts } from "../domain/types";
+import type { DecidedPhase, GradeRequirement, Intervention, MatchEvent, MatchState, TerminalFacts } from "../domain/types";
 import { getScenario } from "../data/scenarios";
 import { useAgentSnapshot } from "../agent/bridge";
 import { clockLabel, commentaryFor, isHighlight } from "../ui/commentary";
 import { matchHash } from "../router";
+import { buildReportInsight } from "../ui/reportInsight";
+import "../ui/report.css";
 
 interface ReportProps {
   scenarioId: string;
@@ -14,6 +16,7 @@ interface ReportProps {
 type StoredResult = {
   readonly state: MatchState;
   readonly timeline: readonly MatchEvent[];
+  readonly interventions?: readonly Intervention[];
   readonly matchCode?: string;
 };
 
@@ -69,6 +72,9 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
   const comparison = scenario === undefined || mine === null ? null : compareToHistory(scenario.actualTerminal, mine);
   const grade = scenario === undefined || mine === null ? null : evaluateGrade(scenario.mission, mine);
   const highlights = result?.timeline.filter(isHighlight) ?? [];
+  const insight = scenario === undefined || mine === null || result === null
+    ? null
+    : buildReportInsight({ scenario, terminal: mine, timeline: result.timeline, interventions: result.interventions ?? [] });
   const previousBest = bestGrade(loadRecords(), scenarioId);
   const nextAttempt = scenario === undefined ? 0 : (attemptIndex + 1) % scenario.publishedSeedDeck.length;
 
@@ -92,6 +98,9 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
           실제역사: `${scenario.actualTerminal.userGoals}대${scenario.actualTerminal.opponentGoals}, ${phaseLabels[scenario.actualTerminal.decidedPhase]}`,
           이전최고등급: previousBest,
           매치코드: result?.matchCode ?? null,
+          why: insight?.why ?? null,
+          nextTry: insight?.nextTry ?? null,
+          interventionCount: insight?.decisions.length ?? 0,
         },
         feed: highlights.map((event) => `${clockLabel(event.clock)} ${commentaryFor(event, scenario)}`),
       },
@@ -115,16 +124,56 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
           <nav className="screen-nav"><a className="button-link" href={matchHash(scenarioId, attemptIndex)}>매치룸으로 가기</a></nav>
         </section>
       ) : (
-        <section className="report-section">
-          <h2>나의 결과</h2>
-          <ResultRows terminal={mine} scenarioId={scenarioId} />
-          <p className="result-headline">{comparison!.headline}</p>
-          <p className="grade-result" aria-label={`등급 ${grade}`}>{grade} 등급</p>
-          {previousBest === null || previousBest === grade ? null : <p className="best-grade">이 경기에서 남긴 최고 등급은 {previousBest}입니다.</p>}
-          {result?.matchCode === undefined ? null : (
-            <p className="match-code-line">매치 코드 <code className="match-code">{result.matchCode}</code></p>
-          )}
-        </section>
+        <>
+          <section className="report-section rp-summary">
+            <h2>나의 결과</h2>
+            <p className="rp-outcome">{resultLabel(mine)}, {comparison?.headline}</p>
+            <p className="grade-result" aria-label={`등급 ${grade}`}>{grade} 등급</p>
+            <ResultRows terminal={mine} scenarioId={scenarioId} />
+            {previousBest === null || previousBest === grade ? null : <p className="best-grade">이 경기에서 남긴 최고 등급은 {previousBest}입니다.</p>}
+            {result?.matchCode === undefined ? null : (
+              <p className="match-code-line">매치 코드 <code className="match-code">{result.matchCode}</code></p>
+            )}
+          </section>
+
+          <section className="report-section">
+            <h2>내가 바꾼 것</h2>
+            {insight?.decisions.length === 0 ? (
+              <p className="rp-empty">확정한 개입이 없습니다. 다음 시도에서는 전술 하나를 바꿔 결과를 비교해 보세요.</p>
+            ) : (
+              <ol className="rp-decisions">{insight?.decisions.map((decision) => (
+                <li className="rp-decision" key={decision.tokenIndex}>
+                  <h3>{decision.headline}</h3>
+                  {decision.changes.length === 0 ? <p>기록할 전술 변화가 없습니다.</p> : <ul className="rp-changes">{decision.changes.map((change) => <li key={change}>{change}</li>)}</ul>}
+                </li>
+              ))}</ol>
+            )}
+          </section>
+
+          <section className="report-section">
+            <h2>왜 이렇게 끝났나</h2>
+            <p className="rp-why">{insight?.why}</p>
+            {/*
+              이 집계는 이어받은 시점 이후에 일어난 것만 센다. 그 사실을 밝히지 않으면
+              최종 스코어 0대1 옆에 상대 득점 0골이 나란히 서서 사용자가 모순으로 읽는다.
+            */}
+            <p className="rp-tally-scope">{scenario.interventionStartMinute}분에 이어받은 뒤 기록된 것만 셉니다. 그 전의 {scenario.startingUserGoals}대{scenario.startingOpponentGoals}은 이미 벌어진 일입니다.</p>
+            <dl className="rp-tally">
+              <div><dt>우리 찬스</dt><dd>{insight?.tally.userChances}번</dd></div>
+              <div><dt>상대 찬스</dt><dd>{insight?.tally.opponentChances}번</dd></div>
+              <div><dt>우리 득점</dt><dd>{insight?.tally.userGoalsScored}골</dd></div>
+              <div><dt>상대 득점</dt><dd>{insight?.tally.opponentGoalsScored}골</dd></div>
+              <div><dt>상대 반격</dt><dd>{insight?.tally.aiCounters}번</dd></div>
+              <div><dt>교체</dt><dd>{insight?.tally.substitutions}번</dd></div>
+            </dl>
+          </section>
+
+          <section className="report-section">
+            <h2>다음에 뭘 바꿀까</h2>
+            <p className="rp-next">{insight?.nextTry}</p>
+            <nav className="screen-nav rp-next-action"><a className="button-link" href={matchHash(scenarioId, nextAttempt)}>새 리매치 시작</a></nav>
+          </section>
+        </>
       )}
 
       <section className="report-section" aria-labelledby="actual-result">
@@ -151,8 +200,8 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
       </section>
 
       <nav className="screen-nav" aria-label="화면 이동">
-        <a className="button-link" href={matchHash(scenarioId, nextAttempt)}>새 리매치 시작</a>
-        <a href={matchHash(scenarioId, attemptIndex)}>같은 경기 다시 보기</a>
+        {mine === null ? <a className="button-link" href={matchHash(scenarioId, nextAttempt)}>새 리매치 시작</a> : null}
+        {mine === null ? null : <a href={matchHash(scenarioId, attemptIndex)}>같은 경기 다시 보기</a>}
         <a href="#/hall-of-fame">명예의 전당</a>
         <a href="#/">홈으로 돌아가기</a>
       </nav>
