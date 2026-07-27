@@ -100,7 +100,7 @@ exports[`다섯 종료 경로 > 실제 종료 사실과 형식 선언을 스냅�
       "extraTimeMinutes": 30,
       "extraTimeRule": "suddenDeath",
       "regulationMinutes": 90,
-      "regulationStoppage": 0,
+      "regulationStoppage": 4,
       "shootoutOnTie": true,
       "shootoutRegularRounds": 5,
     },

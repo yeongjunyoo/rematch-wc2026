@@ -89,7 +89,7 @@ describe("다섯 종료 경로", () => {
     );
   });
 
-  it("체코전은 세 골 차 목표를 정규시간 등급에 반영한다", () => {
+  it("체코전은 골득실 목표를 정규시간 등급에 반영한다", () => {
     const declaration = scenario("kor-cze-2026");
     const historical = terminal(
       stepPhase(state(declaration, { userGoals: 2, opponentGoals: 1 }), declaration.format, declaration.derivedOutcomeRule).state,
@@ -99,7 +99,8 @@ describe("다섯 종료 경로", () => {
     );
 
     expect(historical).toMatchObject({ decidedPhase: "regulation", userResult: "win" });
-    expect(evaluateGrade(declaration.mission, historical)).toBe("B");
+    // 실제 역사인 2대1은 골득실 1이므로 A, 더 벌린 4대1은 S다.
+    expect(evaluateGrade(declaration.mission, historical)).toBe("A");
     expect(evaluateGrade(declaration.mission, expanded)).toBe("S");
   });
 
@@ -165,7 +166,12 @@ describe("다섯 종료 경로", () => {
 
   it("2002년은 골든골 직후 종료하고 정규시간 승리보다 높은 등급을 주지 않는다", () => {
     const declaration = scenario("kor-ita-2002");
-    const entered = stepPhase(state(declaration), declaration.format, declaration.derivedOutcomeRule).state;
+    const atEnd = state(declaration);
+    const entered = stepPhase(
+      { ...atEnd, clock: { ...atEnd.clock, minute: 94, absoluteMinute: 94 } },
+      declaration.format,
+      declaration.derivedOutcomeRule,
+    ).state;
     const goldenGoal = applyGoal(
       { ...entered, clock: { ...entered.clock, minute: 16, absoluteMinute: 106 } },
       declaration.format,
@@ -173,8 +179,13 @@ describe("다섯 종료 경로", () => {
       declaration.derivedOutcomeRule,
     );
     const goldenFacts = terminal(goldenGoal);
+    const atRegulationEnd = state(declaration, { userGoals: 2, opponentGoals: 1 });
     const regulationFacts = terminal(
-      stepPhase(state(declaration, { userGoals: 2, opponentGoals: 1 }), declaration.format, declaration.derivedOutcomeRule).state,
+      stepPhase(
+        { ...atRegulationEnd, clock: { ...atRegulationEnd.clock, minute: 94, absoluteMinute: 94 } },
+        declaration.format,
+        declaration.derivedOutcomeRule,
+      ).state,
     );
     const grades = ["F", "B", "A", "S"];
 

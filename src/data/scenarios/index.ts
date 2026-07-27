@@ -68,11 +68,12 @@ const KOREA_CZECHIA: ScenarioDeclaration = {
   startingUserGoals: 1,
   startingOpponentGoals: 1,
   mission: {
-    brief: "성공한 승부수를 더 크게 만들어 세 골 차 승리를 완성하세요.",
+    brief: "성공한 승부수를 더 크게 만들어 두 골 차 이상으로 벌리세요.",
     gradeCutlines: [
-      { grade: "S", requirement: { kind: "goalDifferenceAtLeast", value: 3 } },
-      { grade: "A", requirement: { kind: "goalDifferenceAtLeast", value: 2 } },
-      { grade: "B", requirement: { kind: "userResult", result: "win" } },
+      // 실제 도달 가능한 범위로 맞춘다. 골득실 3은 남은 23분에 표본 48회에서 한 번도 나오지 않았다.
+      { grade: "S", requirement: { kind: "goalDifferenceAtLeast", value: 2 } },
+      { grade: "A", requirement: { kind: "goalDifferenceAtLeast", value: 1 } },
+      { grade: "B", requirement: { kind: "userResult", result: "draw" } },
     ],
   },
   derivedOutcomeRule: null,
@@ -155,7 +156,10 @@ const KOREA_ITALY_2002: ScenarioDeclaration = {
   historyNote: "2002년 6월 18일 대전 16강전은 정규시간 1대1 뒤 연장으로 이어졌고 대한민국이 골든골로 2대1 승리를 거뒀습니다.",
   format: {
     regulationMinutes: 90,
-    regulationStoppage: 0,
+    // 90분에서 이어받으므로 추가시간이 없으면 정규시간에 골을 넣을 시간이 0이 된다.
+    // 그러면 미션인 정규시간 결착이 구조적으로 불가능해진다. 실제 경기도 88분 동점골 뒤
+    // 추가시간이 있었으므로 역사와도 맞는다.
+    regulationStoppage: 4,
     extraTimeRule: "suddenDeath",
     extraTimeMinutes: 30,
     shootoutOnTie: true,
@@ -164,14 +168,18 @@ const KOREA_ITALY_2002: ScenarioDeclaration = {
   userTeam: { id: "kor", displayName: "대한민국", crestKey: "kr-minimal" },
   opponentTeam: { id: "ita", displayName: "이탈리아", crestKey: "it-minimal" },
   opponentFormation: "5-4-1",
-  interventionStartMinute: 90,
+  // 88분 동점골 직후에서 이어받는다. 90분에서 시작하면 정규시간에 남은 시간이 없어
+  // 미션인 정규시간 결착이 구조적으로 불가능했다.
+  interventionStartMinute: 88,
   startingUserGoals: 1,
   startingOpponentGoals: 1,
   mission: {
-    brief: "헌정의 승리를 정규시간 안에 끝내세요.",
+    brief: "동점을 만든 직후입니다. 헌정의 승리를 정규시간 안에 끝내세요.",
     gradeCutlines: [
-      { grade: "S", requirement: { kind: "goalDifferenceAtLeast", value: 2 } },
-      { grade: "A", requirement: { kind: "decidedBy", phase: "regulation" } },
+      // 순서대로 평가된다. 지면 먼저 F로 떨어뜨려야 그 뒤 국면 조건이 승리만 잡는다.
+      { grade: "F", requirement: { kind: "userResult", result: "loss" } },
+      { grade: "S", requirement: { kind: "decidedBy", phase: "regulation" } },
+      { grade: "A", requirement: { kind: "decidedBy", phase: "goldenGoal" } },
       { grade: "B", requirement: { kind: "userResult", result: "win" } },
     ],
   },
