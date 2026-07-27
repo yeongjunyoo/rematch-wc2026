@@ -249,7 +249,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
               aria-pressed={selectedBenchId === player.id}
               aria-label={`${player.label}, ${player.position}${player.confirmed ? ", 확인됨" : ", 재구성"}. 눌러서 넣을 선수로 고르기`}
             >
-              <span className="dg-bench-card__name">{player.label}{player.confirmed ? <span className="dg-bench-card__badge">확인됨</span> : null}</span>
+              <span className="dg-bench-card__name">{player.label}</span>
               <small>{player.position}{player.confirmed ? "" : " 재구성"}</small>
             </button>
           ))}</div>
