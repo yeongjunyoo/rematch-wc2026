@@ -207,7 +207,10 @@ function applyDroughtRelief(base: number, state: MatchState, scenario: ScenarioD
     : state.clock.absoluteMinute - lastUserChance.clock.absoluteMinute;
   if (since <= 3) return base;
   const relief = Math.min(1, (since - 3) / DROUGHT_FULL_RELIEF_MINUTES);
-  return Math.min(0.45, base * (1 + relief * 1.1));
+  // 배수만으로는 base가 낮은 경기에서 여전히 사건이 두세 개에 그친다. 실측에서 첫 시도가
+  // 정확히 그랬고, 그 사용자에게는 무엇을 해도 같은 화면이었다. 오래 굶으면 최소 문턱을 준다.
+  const floor = since >= 8 ? 0.12 * relief : 0;
+  return Math.min(0.45, Math.max(base * (1 + relief * 1.1), floor));
 }
 
 function createChances(state: MatchState, scenario: ScenarioDeclaration, applied: readonly Intervention[], world: WorldBook): { state: MatchState; traced: readonly ExpectedChanceEntry[] } {
