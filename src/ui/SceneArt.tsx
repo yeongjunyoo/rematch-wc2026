@@ -1,7 +1,8 @@
 import type React from "react";
 import "./sceneArt.css";
 
-export type SceneKind = "night-bench" | "pitch-mood";
+/** 지금은 한 장면만 쓴다. 도달하지 않는 분기를 남겨 두면 검증되지 않은 경로가 번들에 남는다. */
+export type SceneKind = "night-bench";
 
 export interface SceneArtProps {
   readonly kind: SceneKind;
@@ -50,41 +51,12 @@ function NightBench(): React.JSX.Element {
   );
 }
 
-function PitchMood(): React.JSX.Element {
-  return (
-    <svg className="sa-art sa-pitch-mood" viewBox="0 0 960 360" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
-      <defs>
-        <linearGradient id="sa-mood-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop stopColor="#f4f5f2" />
-          <stop offset="1" stopColor="#dfe8df" />
-        </linearGradient>
-        <linearGradient id="sa-mood-grass" x1="0" y1="0" x2="0" y2="1">
-          <stop stopColor="#769d8d" stopOpacity="0.24" />
-          <stop offset="1" stopColor="#396e5d" stopOpacity="0.16" />
-        </linearGradient>
-        <radialGradient id="sa-mood-glow">
-          <stop stopColor="#d8f0a4" stopOpacity="0.24" />
-          <stop offset="1" stopColor="#0d6261" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      <rect className="sa-sky" width="960" height="360" fill="url(#sa-mood-sky)" />
-      <ellipse className="sa-mood-light sa-mood-light-left" cx="190" cy="77" rx="240" ry="125" fill="url(#sa-mood-glow)" />
-      <ellipse className="sa-mood-light sa-mood-light-right" cx="770" cy="77" rx="240" ry="125" fill="url(#sa-mood-glow)" />
-      <path className="sa-mood-horizon" d="M0 160c173-12 323 11 486-3 161-14 284 10 474-4v32H0z" />
-      <path className="sa-mood-field" d="M0 185h960v175H0z" fill="url(#sa-mood-grass)" />
-      <path className="sa-mood-stripe" d="M0 206h960v28H0zm0 56h960v28H0zm0 56h960v28H0z" />
-      <path className="sa-mood-line" d="M0 272h960" />
-      <path className="sa-mood-vignette" d="M0 0h960v360H0z" />
-    </svg>
-  );
-}
-
 export function SceneArt({ kind, className }: SceneArtProps): React.JSX.Element {
   const sceneClassName = `sa-scene sa-scene-${kind}${className === undefined ? "" : ` ${className}`}`;
 
   return (
     <div className={sceneClassName}>
-      {kind === "night-bench" ? <NightBench /> : <PitchMood />}
+      <NightBench />
     </div>
   );
 }

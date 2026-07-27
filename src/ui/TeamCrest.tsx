@@ -4,9 +4,14 @@ import "./teamCrest.css";
 export interface TeamCrestProps {
   /** `src/data/scenarios/index.ts`의 crestKey. 알 수 없는 값이면 중립 도형을 그린다. */
   readonly crestKey: string;
-  /** 접근성 라벨에 쓸 팀 표시명. */
+  /**
+   * 팀 표시명.
+   * 이 표식은 장식이므로 접근성 트리에서 숨긴다. 팀 이름은 바로 옆 글자가 이미 전달하며
+   * 여기서 또 읽으면 스크린리더가 같은 이름을 두 번 말한다. 이 값은 개발자 확인용이다.
+   */
   readonly teamName: string;
-  readonly size: "small" | "medium" | "large";
+  /** 지금은 이름 옆의 작은 표식으로만 쓴다. 실제 호출이 생길 때 크기를 늘린다. */
+  readonly size: "small";
 }
 
 function CrestArt({ crestKey }: Pick<TeamCrestProps, "crestKey">): React.JSX.Element {

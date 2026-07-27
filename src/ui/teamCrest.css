@@ -12,13 +12,6 @@
   --tc-size: 1.1rem;
 }
 
-.tc-crest-medium {
-  --tc-size: 1.8rem;
-}
-
-.tc-crest-large {
-  --tc-size: 3rem;
-}
 
 .tc-mark {
   display: block;

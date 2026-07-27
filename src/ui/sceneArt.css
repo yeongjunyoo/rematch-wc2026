@@ -15,9 +15,6 @@
   aspect-ratio: 96 / 43;
 }
 
-.sa-pitch-mood {
-  aspect-ratio: 8 / 3;
-}
 
 .sa-sky {
   fill: #f4f5f2;
@@ -77,41 +74,16 @@
   opacity: 0.7;
 }
 
-.sa-light-glow,
-.sa-mood-light {
+.sa-light-glow {
   transform-box: fill-box;
   transform-origin: center;
   animation: sa-light-breathe 9s ease-in-out infinite alternate;
 }
 
-.sa-light-glow-right,
-.sa-mood-light-right {
+.sa-light-glow-right {
   animation-delay: -4.5s;
 }
 
-.sa-mood-horizon {
-  fill: #173c37;
-  opacity: 0.08;
-}
-
-.sa-mood-stripe {
-  fill: #396e5d;
-  opacity: 0.08;
-}
-
-.sa-mood-line {
-  fill: none;
-  stroke: #0d6261;
-  stroke-width: 1.5;
-  opacity: 0.12;
-}
-
-.sa-mood-vignette {
-  fill: none;
-  stroke: #f4f5f2;
-  stroke-width: 32;
-  opacity: 0.3;
-}
 
 @keyframes sa-light-breathe {
   from {
@@ -126,8 +98,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sa-light-glow,
-  .sa-mood-light {
+  .sa-light-glow {
     animation: none;
   }
 }
