@@ -48,7 +48,7 @@ DAKER 월간 해커톤 「내가 축구 감독이라면」. 하드 마감 **2026
 
 기준 커밋은 `9ea2dbdd9f0c0b2157e240aabd9b91d49b1ceaa8`이며 두 파일 머리말에 같은 값이 있습니다. 배포본 기록에는 배포된 자산 해시와 그 커밋의 로컬 빌드 자산 해시를 함께 적어 두 쪽이 같은 산출물임을 대조할 수 있게 했습니다.
 
-기준 커밋 이후에도 이 문서처럼 마크다운만 바꾸는 커밋이 있을 수 있습니다. 그런 커밋은 번들 산출물을 바꾸지 않으므로, 제품이 같은지는 커밋 해시가 아니라 **자산 해시**로 대조하십시오. 아래 명령의 결과가 `artifacts/gate/deployed-gates.txt`의 `deployedAsset` 및 로컬 `dist/index.html`과 같으면 같은 제품입니다. JS와 CSS를 함께 봐야 합니다.
+기준 커밋 이후에도 이 문서처럼 마크다운만 바꾸는 커밋이 있을 수 있습니다. 그런 커밋은 번들 산출물을 바꾸지 않으므로, 제품이 같은지는 커밋 해시가 아니라 **자산 해시**로 대조하십시오. 아래 명령의 결과가 `artifacts/gate/deployed-gates.txt`의 `deployedAsset`과 `deployedCss` 및 로컬 `dist/index.html`과 같으면 같은 제품입니다. JS와 CSS를 함께 봐야 합니다.
 
 ```
 curl -s https://rematch-wc2026.vercel.app | grep -oE "index-[A-Za-z0-9_-]+\.(js|css)"
