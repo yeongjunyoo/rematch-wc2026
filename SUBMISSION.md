@@ -31,8 +31,8 @@ DAKER 월간 해커톤 「내가 축구 감독이라면」. 하드 마감 **2026
 3. **DAKER 최종 제출**
    로그인한 참가자 계정에서 최종 단계 폼이 열려 있는지 먼저 확인합니다. 세 링크를 저장하고 최종 제출을 누른 뒤 영수증이나 화면을 보존합니다.
 
-4. **실기 확인**
-   Galaxy와 iPhone에서 대표 경로를 손으로 반복합니다. 자동 검증은 Chromium 계열만 덮습니다.
+4. **실기와 주요 브라우저 확인**
+   Galaxy와 iPhone에서 대표 경로를 손으로 반복하고, 데스크톱 Firefox와 iPhone Safari에서도 같은 경로를 한 번씩 확인합니다. 자동 검증은 Chromium 계열만 덮습니다.
    - 홈에서 첫 경기 진입
    - 더그아웃에서 손흥민을 벤치에서 누르고 피치 선수를 눌러 교체
    - 팀 지시 슬라이더 조작
@@ -44,18 +44,20 @@ DAKER 월간 해커톤 「내가 축구 감독이라면」. 하드 마감 **2026
 
 ## 검증 상태
 
-로컬과 배포본 모두에서 실행한 결과를 `artifacts/gate/` 아래에 원시 출력으로 보존했습니다.
+로컬과 배포본에서 실행한 **원시 출력**을 `artifacts/gate/` 아래에 보존했습니다. 두 파일 모두 머리말에 실행 시각과 대상과 검토한 커밋을 적었습니다. 아래 표의 값은 그 파일에서 그대로 읽을 수 있는 것만 담았습니다.
 
-| 관문 | 로컬 | 배포본 |
-|---|---|---|
-| `npx tsc --noEmit` | 통과 | 해당 없음 |
-| `npx vitest run` | 21파일 143개 통과 | 해당 없음 |
-| `npx vite build` | 성공 | 해당 없음 |
-| `node scripts/smoke.mjs` | 28건 | 28건 |
-| `node scripts/e2e.mjs` | 43건 | 43건 |
-| `node scripts/redteam.mjs` | 25건 | 25건 |
+| 관문 | 로컬 | 배포본 | 원시 기록 |
+|---|---|---|---|
+| `npx tsc --noEmit` | 통과 | 해당 없음 | `artifacts/gate/local-gates.txt` |
+| `npx vitest run` | 21파일 143개 통과 | 해당 없음 | 같은 파일 |
+| `npx vite build` | 성공 | 해당 없음 | 같은 파일 |
+| `node scripts/smoke.mjs` | 통과 | 통과 | 로컬은 `local-gates.txt`, 배포본은 `deployed-gates.txt` |
+| `node scripts/e2e.mjs` | 통과 | 통과 | 같음 |
+| `node scripts/redteam.mjs` | 통과 | 통과 | 같음 |
 
 자동 검증은 Playwright 캐시의 Chromium headless shell만 사용합니다. **Safari와 Firefox와 실제 기기는 덮지 않습니다.**
+
+`artifacts/` 아래는 `.gitignore` 대상이라 저장소에 포함되지 않습니다. 심사자에게 증거를 보여야 하면 해당 파일을 따로 첨부하십시오.
 
 ## 자동 플레이테스트
 

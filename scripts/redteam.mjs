@@ -223,10 +223,6 @@ try {
     await page.evaluate("(() => { document.querySelector('.player-token')?.focus(); return true; })()");
     await pressEnter();
     await sleep(120);
-    // 확인 단계도 키보드로 넘을 수 있어야 마우스 없이 교체가 완결된다.
-    await page.evaluate("(() => { const b = [...document.querySelectorAll('.dg-substitution-confirmation button')].find((x) => x.innerText.includes('이 교체 적용')); if (b) b.focus(); return true; })()");
-    await pressEnter();
-    await sleep(120);
     keyboardSub = await page.evaluate("document.querySelector('.dugout-notice')?.innerText.includes('교체 카드를 사용했습니다') ?? false");
   }
   record("R17", "키보드로 손흥민 투입 경로", "마우스 없이 더그아웃과 교체에 도달한다", `더그아웃 ${keyboardOpened}, 교체 ${keyboardSub}`, keyboardOpened && keyboardSub, []);
