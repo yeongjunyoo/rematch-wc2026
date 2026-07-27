@@ -121,3 +121,38 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
 
 /* 옛 버전 기록은 재생하지 않는다. 조용히 다른 경기를 보여주느니 못 한다고 말한다. */
 .record-stale { color: #7a3428; font-size: .8rem; line-height: 1.4; max-width: 12rem; text-align: right; }
+
+/*
+  상징과 이름을 한 줄로 세운다. 상징은 이름 옆의 작은 표식이므로 제목과 같은 무게를 주지 않는다.
+  줄바꿈을 허용하면 상징만 다음 줄로 떨어져 무엇에 붙은 표식인지 알 수 없게 된다.
+*/
+.hm-matchup {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.hm-matchup > span { flex: 0 0 auto; }
+
+/*
+  장면 아트는 제목 위 배너로 둔다.
+  배경으로 깔면 글자 대비를 위해 아트를 지나치게 흐리게 만들어야 해서 둘 다 죽는다.
+  배너로 두면 아트는 아트대로 읽히고 글자는 글자대로 선명하다.
+  아트가 없거나 못 그려져도 헤더의 의미는 그대로 성립한다.
+*/
+.hm-hero-art, .rp-header-art {
+  display: block;
+  /* 래퍼가 높이를 정하고 안의 SVG가 그 상자를 채운다. */
+  width: 100%;
+  height: clamp(5.5rem, 22vw, 9rem);
+  margin-bottom: 1rem;
+  border-radius: 10px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.rp-header-art { height: clamp(3.5rem, 14vw, 5.5rem); }
+
+.hm-hero-art > svg, .rp-header-art > svg { display: block; width: 100%; height: 100%; }

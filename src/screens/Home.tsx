@@ -1,4 +1,6 @@
 import { SCENARIOS } from "../data/scenarios";
+import { SceneArt } from "../ui/SceneArt";
+import { TeamCrest } from "../ui/TeamCrest";
 import { useAgentSnapshot } from "../agent/bridge";
 import "../ui/home.css";
 
@@ -36,6 +38,7 @@ export function Home() {
   return (
     <main className="page hm-page">
       <header className="hero hm-hero">
+        <SceneArt kind="night-bench" className="hm-hero-art" />
         <p className="eyebrow">월드컵 전술 리매치</p>
         <h1>REMATCH</h1>
         <p className="hook">손흥민이 벤치에 있던 그 밤을, 당신이 다시 지휘한다</p>
@@ -51,7 +54,11 @@ export function Home() {
           {SCENARIOS.map((scenario, index) => (
             <article className={`hm-card${index === 0 ? " hm-card-featured" : ""}`} key={scenario.id}>
               {index === 0 ? <p className="hm-featured-label">첫 번째 리매치</p> : null}
-              <h3>{scenario.userTeam.displayName} 대 {scenario.opponentTeam.displayName}</h3>
+              <h3 className="hm-matchup">
+                <TeamCrest crestKey={scenario.userTeam.crestKey} teamName={scenario.userTeam.displayName} size="small" />
+                {scenario.userTeam.displayName} 대 {scenario.opponentTeam.displayName}
+                <TeamCrest crestKey={scenario.opponentTeam.crestKey} teamName={scenario.opponentTeam.displayName} size="small" />
+              </h3>
               <p className="hm-actual">실제 결과 {scenario.actualTerminal.userGoals}대{scenario.actualTerminal.opponentGoals}</p>
               <p className="hm-meta">{scenario.userTeam.displayName} 지휘, {scenario.interventionStartMinute}분부터, {scenario.startingUserGoals}대{scenario.startingOpponentGoals}</p>
               {index === 0 ? <p className="hm-situation">{situationLine(scenario)}</p> : null}

@@ -6,6 +6,7 @@ import { useAgentSnapshot } from "../agent/bridge";
 import { clockLabel, commentaryFor, isHighlight } from "../ui/commentary";
 import { recallResult } from "../ui/matchResult";
 import type { StoredMatchResult } from "../ui/matchResult";
+import { SceneArt } from "../ui/SceneArt";
 import { matchHash } from "../router";
 import { buildReportInsight } from "../ui/reportInsight";
 import "../ui/report.css";
@@ -105,6 +106,7 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
   return (
     <main className="page">
       <header className="screen-header">
+        <SceneArt kind="night-bench" className="rp-header-art" />
         <p className="eyebrow">결과 리포트, {attemptIndex + 1}번째 시도</p>
         <h1>{scenario.userTeam.displayName} 대 {scenario.opponentTeam.displayName}</h1>
       </header>

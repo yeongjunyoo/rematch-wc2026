@@ -1,0 +1,41 @@
+.tc-crest {
+  --tc-size: 1.8rem;
+
+  display: inline-block;
+  flex: 0 0 auto;
+  width: var(--tc-size);
+  height: var(--tc-size);
+  vertical-align: middle;
+}
+
+.tc-crest-small {
+  --tc-size: 1.1rem;
+}
+
+.tc-crest-medium {
+  --tc-size: 1.8rem;
+}
+
+.tc-crest-large {
+  --tc-size: 3rem;
+}
+
+.tc-mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tc-frame {
+  fill: #f4f5f2;
+  stroke: #1e2528;
+  stroke-width: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-crest,
+  .tc-mark {
+    transition: none;
+    animation: none;
+  }
+}

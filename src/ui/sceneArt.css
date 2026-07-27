@@ -1,0 +1,133 @@
+.sa-scene {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  background: #173c37;
+}
+
+.sa-art {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sa-night-bench {
+  aspect-ratio: 96 / 43;
+}
+
+.sa-pitch-mood {
+  aspect-ratio: 8 / 3;
+}
+
+.sa-sky {
+  fill: #f4f5f2;
+}
+
+.sa-floodlights {
+  fill: none;
+  stroke: #d8f0a4;
+  stroke-linecap: square;
+  stroke-width: 3;
+  opacity: 0.38;
+}
+
+.sa-horizon {
+  fill: #1e2528;
+  opacity: 0.5;
+}
+
+.sa-halfway {
+  fill: none;
+  stroke: #d8f0a4;
+  stroke-width: 2;
+  opacity: 0.26;
+}
+
+.sa-bench-roof {
+  fill: #101719;
+  opacity: 0.93;
+}
+
+.sa-bench-seat {
+  fill: #1e2528;
+}
+
+.sa-bench-frame {
+  fill: none;
+  stroke: #0b1113;
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.sa-folded-shirt {
+  fill: #0d6261;
+  stroke: #d8f0a4;
+  stroke-width: 1.4;
+}
+
+.sa-shirt-fold {
+  fill: none;
+  stroke: #d8f0a4;
+  stroke-width: 1.2;
+  opacity: 0.7;
+}
+
+.sa-foreground {
+  fill: #101d22;
+  opacity: 0.7;
+}
+
+.sa-light-glow,
+.sa-mood-light {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sa-light-breathe 9s ease-in-out infinite alternate;
+}
+
+.sa-light-glow-right,
+.sa-mood-light-right {
+  animation-delay: -4.5s;
+}
+
+.sa-mood-horizon {
+  fill: #173c37;
+  opacity: 0.08;
+}
+
+.sa-mood-stripe {
+  fill: #396e5d;
+  opacity: 0.08;
+}
+
+.sa-mood-line {
+  fill: none;
+  stroke: #0d6261;
+  stroke-width: 1.5;
+  opacity: 0.12;
+}
+
+.sa-mood-vignette {
+  fill: none;
+  stroke: #f4f5f2;
+  stroke-width: 32;
+  opacity: 0.3;
+}
+
+@keyframes sa-light-breathe {
+  from {
+    opacity: 0.72;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sa-light-glow,
+  .sa-mood-light {
+    animation: none;
+  }
+}
