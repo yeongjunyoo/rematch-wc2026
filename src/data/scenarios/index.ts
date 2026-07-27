@@ -43,7 +43,10 @@ const SOUTH_AFRICA_KOREA: ScenarioDeclaration = {
     userResult: "loss",
     derivedOutcome: { achieved: false, statement: "녹아웃 진출에 실패했습니다." },
   },
-  publishedSeedDeck: ["za-kor-2026-01", "za-kor-2026-02", "za-kor-2026-03", "za-kor-2026-04", "za-kor-2026-05", "za-kor-2026-06", "za-kor-2026-07", "za-kor-2026-08"],
+  // 시도 0은 모든 사용자의 첫 경험이다. scripts/seed-search.mjs로 탐색해
+  // "그냥 두면 0대1 패배, 손흥민을 넣으면 그가 골을 넣어 1대1 진출"이 되는 시드를 맨 앞에 뒀다.
+  // authored 배치이며 나머지 시드는 그대로 남아 뒤 시도에서 만난다.
+  publishedSeedDeck: ["za-kor-2026-09", "za-kor-2026-02", "za-kor-2026-03", "za-kor-2026-04", "za-kor-2026-05", "za-kor-2026-06", "za-kor-2026-07", "za-kor-2026-08"],
 };
 
 const KOREA_CZECHIA: ScenarioDeclaration = {

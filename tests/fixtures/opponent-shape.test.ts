@@ -62,7 +62,7 @@ describe("상대 대형 선언", () => {
     // 아래 기대값은 고정 시드와 고정 개입으로 실제 실행해 관측한 종료 상태다.
     // 엔진 계수를 바꾸면 이 값도 함께 갱신해야 한다. 그때는 왜 바꿨는지를 커밋에 남긴다.
     expect(observed).toEqual([
-      { id: "za-kor-2026", score: [0, 1], decidedPhase: "regulation", userResult: "loss", eventCount: 10 },
+      { id: "za-kor-2026", score: [0, 2], decidedPhase: "regulation", userResult: "loss", eventCount: 9 },
       { id: "kor-cze-2026", score: [2, 2], decidedPhase: "regulation", userResult: "draw", eventCount: 10 },
       { id: "esp-arg-2026-final", score: [0, 2], decidedPhase: "extraTime", userResult: "loss", eventCount: 12 },
       { id: "ger-par-2026-r32", score: [2, 2], decidedPhase: "shootout", userResult: "loss", eventCount: 29 },
