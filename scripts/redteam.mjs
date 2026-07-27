@@ -47,6 +47,21 @@ async function fresh(route = "#/match/za-kor-2026") {
   await sleep(180);
 }
 
+/**
+ * 벤치 선수를 피치 선수와 교체한다.
+ * 교체는 보류와 확인 두 단계다. 카드가 경기당 세 장뿐이라 실수로 쓰면 되돌릴 수 없기 때문이다.
+ */
+async function substitute(inName, outName) {
+  if (!(await page.clickText(inName))) return false;
+  await sleep(120);
+  if (!(await page.clickText(outName))) return false;
+  await sleep(120);
+  if (!(await page.evaluate("document.querySelector('.dg-substitution-confirmation') !== null"))) return false;
+  const done = await page.clickText("교체 확정");
+  await sleep(120);
+  return done;
+}
+
 async function openDugout() {
   const clicked = await page.clickText("전술 바꾸기");
   if (!clicked) return false;
@@ -146,11 +161,11 @@ try {
   const initialPitchCount = await page.evaluate("document.querySelectorAll('.player-token').length");
   for (let i = 0; i < 3; i += 1) {
     const target = await page.evaluate("[...document.querySelectorAll('.player-token')].find((x) => !x.innerText.includes('GK'))?.innerText.trim() ?? document.querySelector('.player-token')?.innerText.trim()");
-    await page.clickText(subPlayers[i]); await page.clickText(target);
+    await substitute(subPlayers[i], target);
   }
   const cardsText = await page.evaluate("document.querySelector('.bench')?.innerText ?? ''");
   const fourthTarget = await page.evaluate("document.querySelector('.player-token')?.innerText.trim()");
-  await page.clickText(subPlayers[3]); await page.clickText(fourthTarget);
+  await substitute(subPlayers[3], fourthTarget);
   const afterFourthCard = await page.evaluate("document.querySelector('.dugout-notice')?.innerText ?? ''");
   record("R04", "교체 카드 3장 소진 뒤 네 번째 교체", "네 번째 교체가 거절된다", `초기 피치 ${initialPitchCount}, 벤치 ${cardsText}, 안내 ${afterFourthCard}`, initialPitchCount === 11 && afterFourthCard.includes("교체할 수 없습니다"), []);
 
@@ -158,10 +173,10 @@ try {
   const inName = await page.evaluate("document.querySelector('.bench-card')?.innerText.trim()");
   const outName = await page.evaluate("document.querySelector('.player-token')?.innerText.trim()");
   const outId = await page.evaluate("document.querySelector('.player-token')?.getAttribute('data-drag-item')");
-  await page.clickText(inName); await page.clickText(outName); await sleep(100);
+  await substitute(inName, outName); await sleep(100);
   const pitchAfterSub = await page.evaluate("[...document.querySelectorAll('.player-token')].map((x) => x.getAttribute('data-drag-item'))");
   const benchAfterSub = await page.evaluate("[...document.querySelectorAll('.bench-card')].map((x) => x.getAttribute('data-drag-item'))");
-  await page.clickText(inName); await page.clickText(outName);
+  await substitute(inName, outName);
   const outgoingOnBench = benchAfterSub.includes(`bench:${outId}`);
   // 축구 규칙상 교체로 나간 선수는 그 경기에 복귀하지 못한다. 벤치에 다시 나타나면 그것이 위반이다.
   record("R05", "투입 선수 재교체와 11명 불변식", "피치는 11명이고 중복이 없으며 나간 선수는 벤치로 복귀하지 않는다", `피치 ${pitchAfterSub.length}, 고유 ${new Set(pitchAfterSub).size}, 나간선수벤치복귀 ${outgoingOnBench}`, pitchAfterSub.length === 11 && new Set(pitchAfterSub).size === 11 && outgoingOnBench === false, []);
@@ -210,6 +225,11 @@ try {
     await pressEnter();
     await page.evaluate("(() => { document.querySelector('.player-token')?.focus(); return true; })()");
     await pressEnter();
+    await sleep(120);
+    // 확인 단계도 키보드로 넘을 수 있어야 마우스 없이 교체가 완결된다.
+    await page.evaluate("(() => { const b = [...document.querySelectorAll('.dg-substitution-confirmation button')].find((x) => x.innerText.includes('교체 확정')); if (b) b.focus(); return true; })()");
+    await pressEnter();
+    await sleep(120);
     keyboardSub = await page.evaluate("document.querySelector('.dugout-notice')?.innerText.includes('교체 카드를 사용했습니다') ?? false");
   }
   record("R17", "키보드로 손흥민 투입 경로", "마우스 없이 더그아웃과 교체에 도달한다", `더그아웃 ${keyboardOpened}, 교체 ${keyboardSub}`, keyboardOpened && keyboardSub, []);

@@ -3,8 +3,6 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "engineVersion": "0.1.0",
-  "dataVersion": "0.1.0",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

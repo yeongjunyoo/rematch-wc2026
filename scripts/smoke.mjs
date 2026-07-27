@@ -42,7 +42,7 @@ const ROUTES = [
   { hash: "#/report/za-kor-2026", must: ["결과 리포트", "실제 역사 결과", "미션과 등급"], shot: true },
   { hash: "#/report/kor-ita-2002", must: ["결과 리포트", "골든골"] },
   { hash: "#/hall-of-fame", must: ["명예의 전당"], shot: true },
-  { hash: "#/help", must: ["REMATCH 안내", "데이터 출처와 라이선스", "매치 코드가 같으면"] },
+  { hash: "#/help", must: ["REMATCH 안내", "데이터 출처와 라이선스", "같은 매치 코드와 같은 결정이면", "의도적으로 넣은 보정", "화면의 그림"] },
   { hash: "#/match/nope", must: ["경로를 찾을 수 없습니다"] },
   { hash: "#/match/za-kor-2026/99", must: ["경로를 찾을 수 없습니다"] },
   { hash: "#/nonsense", must: ["경로를 찾을 수 없습니다"] },

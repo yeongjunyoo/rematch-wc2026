@@ -75,7 +75,16 @@ try {
   await waitFor(() => page.evaluate('(document.querySelector(".dugout-notice")?.innerText ?? "").includes("자리를 아직 고르지 않았습니다")'), 4000, "미완성 교체 안내가 뜨지 않았습니다");
   check("미완성 교체 뒤 더그아웃이 열린 채 남는다", await page.evaluate(`document.querySelector(".dugout-overlay") !== null`));
   check("미완성 교체에 토큰이 소모되지 않는다", (await tokensLeft()) === tokensBeforeIncompleteSubstitution);
-  check("피치 선수를 눌러 교체한다", await page.clickText("오현규"));
+  check("피치 선수를 누르면 교체 확인이 뜬다", await page.clickText("오현규"));
+  // 교체 카드는 경기당 세 장뿐이라 실수로 쓰면 되돌릴 수 없다. 확인을 거쳐야 확정된다.
+  await waitFor(() => page.evaluate('document.querySelector(".dg-substitution-confirmation") !== null'), 4000, "교체 확인이 뜨지 않았습니다");
+  check("교체를 취소하면 카드가 그대로다", await page.clickText("교체 취소"));
+  check("취소 뒤 확인이 닫힌다", await page.evaluate('document.querySelector(".dg-substitution-confirmation") === null'));
+  await page.clickText("손흥민");
+  await sleep(150);
+  await page.clickText("오현규");
+  await waitFor(() => page.evaluate('document.querySelector(".dg-substitution-confirmation") !== null'), 4000, "두 번째 교체 확인이 뜨지 않았습니다");
+  check("확인하면 교체가 확정된다", await page.clickText("교체 확정"));
   await waitFor(() => page.evaluate('(document.querySelector(".dugout-notice")?.innerText ?? "").includes("교체 카드를 사용했습니다")'), 4000, "교체가 성립하지 않았습니다");
   check("손흥민이 실제로 투입된다", await page.evaluate('[...document.querySelectorAll(".player-token")].some((node) => node.innerText.includes("손흥민"))'));
 

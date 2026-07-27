@@ -51,8 +51,13 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
   // 벤치에서 고른 선수. 탭 두 번으로 교체하는 경로의 중간 상태다.
   const [selectedBenchId, setSelectedBenchId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [pendingSubstitution, setPendingSubstitution] = useState<{ readonly outId: string; readonly inId: string } | null>(null);
+
   const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const substitutionConfirmationRef = useRef<HTMLElement>(null);
+  const substitutionConfirmButtonRef = useRef<HTMLButtonElement>(null);
+
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const pitchRef = useRef<HTMLDivElement>(null);
@@ -96,7 +101,8 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
   const statusGuide = cardsRemaining === 0
     ? "교체 카드를 모두 사용했습니다. 포메이션과 팀 지시는 바꿀 수 있습니다."
     : selectedBenchId === null
-      ? "교체하려면 아래 벤치에서 넣을 선수를 먼저 누르세요. 그다음 피치에서 뺄 선수를 누르면 교체됩니다."
+      ? "교체하려면 아래 벤치에서 넣을 선수를 먼저 누르세요. 그다음 피치에서 뺄 선수를 누르면 확인할 수 있습니다."
+
       : "벤치 선수를 골랐습니다. 피치에서 뺄 선수를 누르세요.";
 
   useEffect(() => {
@@ -105,19 +111,38 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
     return () => { previouslyFocusedRef.current?.focus(); };
   }, []);
 
+  useEffect(() => {
+    if (pendingSubstitution !== null) substitutionConfirmButtonRef.current?.focus();
+  }, [pendingSubstitution]);
+
+
+  const cancelPendingSubstitution = () => {
+    setPendingSubstitution(null);
+    setSelectedBenchId(null);
+    setNotice("교체를 취소했습니다. 배치와 교체 카드는 그대로입니다.");
+  };
+
   const handleDialogKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Escape") {
       event.preventDefault();
-      onClose();
+      if (pendingSubstitution !== null) {
+        cancelPendingSubstitution();
+      } else {
+        onClose();
+      }
       return;
     }
     if (event.key !== "Tab") return;
-    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])');
+    const focusableRoot = pendingSubstitution === null ? dialogRef.current : substitutionConfirmationRef.current;
+    const focusable = focusableRoot?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])');
+
     if (focusable === undefined || focusable.length === 0) {
       event.preventDefault();
-      dialogRef.current?.focus();
+      focusableRoot?.focus();
       return;
     }
+
+
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     if (first === undefined || last === undefined) return;
@@ -144,6 +169,8 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
     setSubstitutions([]);
     setSelectedBenchId(null);
     setNotice(null);
+    setPendingSubstitution(null);
+
   }, [cardsUsedBefore, initialDirectives, initialFormation, initialPlacements, scenarioId]);
 
   const pointFromEvent = (event: PointerEvent<HTMLElement>) => {
@@ -159,24 +186,38 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
   };
 
   /**
-   * 교체 실행. 드래그 경로와 탭 경로가 같은 함수를 부른다.
-   * 두 벌로 두면 한쪽만 규칙을 지키게 되고, 실제로 이 제품에서는 드래그 경로만 존재해서
-   * 자동 플레이테스트의 축구 팬이 벤치 선수를 세 번 고르고도 넣지 못한 채 이탈했다.
+   * 교체 요청. 드래그 경로와 탭 경로가 같은 보류와 확인 함수를 부른다.
+   * 희소한 카드는 실수로 되돌릴 수 없으므로 확인 전에는 배치와 예산을 바꾸지 않는다.
    */
-  const runSubstitution = (outId: string, inId: string) => {
+  const requestSubstitution = (outId: string, inId: string) => {
     const result = substitute(placements, outId, inId, cardsUsed, 3);
     if (!result.ok) {
+      setNotice(`교체할 수 없습니다. ${result.reason}`);
+      return;
+    }
+    setPendingSubstitution({ outId, inId });
+    setSelectedBenchId(null);
+    setNotice(null);
+  };
+
+  const confirmPendingSubstitution = () => {
+    if (pendingSubstitution === null) return;
+    const { outId, inId } = pendingSubstitution;
+    const result = substitute(placements, outId, inId, cardsUsed, 3);
+    if (!result.ok) {
+      setPendingSubstitution(null);
       setNotice(`교체할 수 없습니다. ${result.reason}`);
       return;
     }
     setPlacements(result.placements);
     setCardsUsed(result.cardsUsed);
     setSubstitutions((current) => [...current, { outId, inId }]);
-    setSelectedBenchId(null);
+    setPendingSubstitution(null);
     const incoming = players.get(inId);
     const outgoing = players.get(outId);
     setNotice(`${incoming?.label ?? "선수"}를 넣고 ${outgoing?.label ?? "선수"}를 뺐습니다. 교체 카드를 사용했습니다.`);
   };
+
 
   /**
    * 탭 경로. 벤치 선수를 누르면 고르고, 그 상태에서 피치 선수를 누르면 교체한다.
@@ -202,7 +243,8 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
       setNotice("먼저 벤치에서 넣을 선수를 고르세요.");
       return;
     }
-    runSubstitution(itemId, selectedBenchId);
+    requestSubstitution(itemId, selectedBenchId);
+
   };
 
   const finishDrag = (event: PointerEvent<HTMLElement>) => {
@@ -218,7 +260,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
           if (target === undefined) {
             setNotice("교체할 선수를 찾을 수 없습니다.");
           } else {
-            runSubstitution(target.playerId, itemId.slice(6));
+            requestSubstitution(target.playerId, itemId.slice(6));
           }
         } else if (target !== undefined && target.playerId !== itemId) {
           setPlacements(swapPlacements(placements, itemId, target.playerId));
@@ -250,6 +292,10 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
     }
     onConfirm(intervention);
   };
+
+  const pendingIncoming = pendingSubstitution === null ? null : players.get(pendingSubstitution.inId);
+  const pendingOutgoing = pendingSubstitution === null ? null : players.get(pendingSubstitution.outId);
+
 
   return (
     <section ref={dialogRef} className="dugout-overlay" role="dialog" aria-modal="true" tabIndex={-1} aria-label="더그아웃 전술 편집" onKeyDown={handleDialogKeyDown} onPointerDown={startDrag} onPointerMove={drag.onPointerMove} onPointerUp={finishDrag} onPointerCancel={drag.onPointerCancel} onLostPointerCapture={drag.onLostPointerCapture}>
@@ -323,6 +369,18 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
       <p className="fitness-legend"><i className="fitness-primary" />주 포지션 <i className="fitness-playable" />소화 가능 <i className="fitness-poor" />부적합</p>
       {notice === null ? null : <p className="dugout-notice" role="status">{notice}</p>}
       <footer className="dugout-actions"><button type="button" className="text-button" onClick={onClose}>취소</button><button type="button" className="button-link" onClick={confirm}>개입 확정</button></footer>
+      {pendingSubstitution === null ? null : (
+        <section ref={substitutionConfirmationRef} className="dg-substitution-confirmation" role="alertdialog" aria-labelledby="substitution-confirmation-title" aria-describedby="substitution-confirmation-description" tabIndex={-1}>
+          <div className="dg-substitution-confirmation__panel">
+            <h3 id="substitution-confirmation-title">교체를 확인하세요</h3>
+            <p id="substitution-confirmation-description">{pendingOutgoing?.label ?? "선수"}을 빼고 {pendingIncoming?.label ?? "선수"}을 넣습니다. 교체 카드 1장을 사용하며 확정 후 {cardsRemaining - 1}장 남습니다.</p>
+            <div className="dg-substitution-confirmation__actions">
+              <button type="button" className="text-button" onClick={cancelPendingSubstitution}>교체 취소</button>
+              <button ref={substitutionConfirmButtonRef} type="button" className="button-link" onClick={confirmPendingSubstitution}>교체 확정</button>
+            </div>
+          </div>
+        </section>
+      )}
     </section>
   );
 }

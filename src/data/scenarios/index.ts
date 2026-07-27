@@ -23,9 +23,9 @@ const SOUTH_AFRICA_KOREA: ScenarioDeclaration = {
   mission: {
     brief: "손흥민이 벤치에서 지켜보는 63분, 동점을 만들어 진출을 지켜내세요.",
     gradeCutlines: [
-      { grade: "S", requirement: { kind: "derivedAchieved" } },
-      { grade: "A", requirement: { kind: "userResult", result: "win" } },
-      { grade: "B", requirement: { kind: "userResult", result: "draw" } },
+      { grade: "S", requirement: { kind: "userResult", result: "win" } },
+      { grade: "A", requirement: { kind: "userResult", result: "draw" } },
+      { grade: "B", requirement: { kind: "userResult", result: "loss" } },
     ],
   },
   derivedOutcomeRule: {
