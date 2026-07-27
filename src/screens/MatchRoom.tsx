@@ -138,7 +138,9 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
     const fresh = events.slice(seenEventCount.current);
     seenEventCount.current = events.length;
     setEmphasis(emphasisFrom(fresh));
-    const next = beatFor(fresh, scenario);
+    const applied = runtime.interventions.slice(0, runtime.appliedCount);
+    const lastDecision = applied.length === 0 ? null : applied[applied.length - 1]!.atMinute;
+    const next = beatFor(fresh, scenario, lastDecision);
     if (next === null) return;
     resumeAfterBeat.current = playing;
     setBeat(next);
@@ -234,6 +236,15 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
   const tokensRemaining = Math.max(0, runtime.state.tokensRemaining - pendingCount);
   const started = runtime.state.clock.absoluteMinute > scenario.interventionStartMinute || runtime.state.events.length > 0;
   const feed = runtime.state.events.filter(isFeedWorthy).slice(-14).reverse();
+  // 전술이 효과를 내고 있는지는 점수가 나기 전에도 보여야 한다. 사건을 그대로 센다.
+  const chanceTally = runtime.state.events.reduce(
+    (tally, event) => event.type !== "chance"
+      ? tally
+      : event.side === "user"
+        ? { user: tally.user + 1, opponent: tally.opponent }
+        : { user: tally.user, opponent: tally.opponent + 1 },
+    { user: 0, opponent: 0 },
+  );
   // 피치 위 한 줄은 방금 일어난 일만 말한다. 피드 전체를 얹으면 그림을 가린다.
   const latestLine = feed.length === 0 || !started
     ? null
@@ -288,6 +299,8 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
         phaseLabel={phaseLabel(runtime.state.clock)}
         tokensRemaining={tokensRemaining}
         totalTokens={3}
+        userChances={chanceTally.user}
+        opponentChances={chanceTally.opponent}
         playing={playing}
         finished={finished}
         speed={speed}
@@ -395,11 +408,17 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
   );
 }
 
-function beatFor(fresh: readonly MatchEvent[], scenario: ScenarioDeclaration): Beat | null {
+function beatFor(fresh: readonly MatchEvent[], scenario: ScenarioDeclaration, decidedAtMinute: number | null): Beat | null {
   const goal = fresh.find((event) => event.type === "goal");
   if (goal !== undefined && goal.type === "goal") {
+    // 골이 내 결정 뒤에 나왔다는 사실을 그 순간에 말해준다. 나중 리포트에서만 말하면
+    // 사용자는 경기 중에 자기 결정이 통했다는 것을 끝내 느끼지 못한다.
+    const sinceDecision = decidedAtMinute === null ? null : goal.clock.absoluteMinute - decidedAtMinute;
+    const credit = sinceDecision !== null && sinceDecision >= 0 && sinceDecision <= 20
+      ? ` 전술을 바꾼 지 ${sinceDecision}분 만입니다.`
+      : "";
     return goal.side === "user"
-      ? { tone: "goal", headline: "골", detail: `${scenario.userTeam.displayName}가 흐름을 뒤집습니다.` }
+      ? { tone: "goal", headline: "골", detail: `${scenario.userTeam.displayName}가 흐름을 뒤집습니다.${credit}` }
       : { tone: "concede", headline: "실점", detail: `${scenario.opponentTeam.displayName}가 앞서갑니다.` };
   }
   const counter = fresh.find((event) => event.type === "aiCounter");

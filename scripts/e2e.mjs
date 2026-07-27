@@ -63,7 +63,8 @@ try {
   await waitFor(() => page.evaluate(`document.querySelector(".dugout-overlay") !== null`), 5000, "더그아웃이 열리지 않았습니다");
   // 탭 두 번으로 교체가 되는지. 드래그만 되던 시절 축구 팬 페르소나가 손흥민을 못 넣고 이탈했다.
   check("벤치 선수를 눌러 고를 수 있다", await page.clickText("손흥민"));
-  await waitFor(() => page.evaluate('(document.querySelector(".dugout-notice")?.innerText ?? "").includes("자리를 피치에서 고르세요")'), 4000, "벤치 선택 안내가 뜨지 않았습니다");
+  // 안내 정본은 더그아웃 상단의 상태 한 줄이다. 문구가 두 곳으로 갈리면 사용자가 무엇을 믿을지 모른다.
+  await waitFor(() => page.evaluate('(document.querySelector(".dg-status-guide")?.innerText ?? "").includes("뺄 선수를 누르세요")'), 4000, "벤치 선택 안내가 뜨지 않았습니다");
   const tokensBeforeIncompleteSubstitution = await tokensLeft();
   check("미완성 교체를 확정할 수 있다", await page.clickText("개입 확정"));
   await waitFor(() => page.evaluate('(document.querySelector(".dugout-notice")?.innerText ?? "").includes("자리를 아직 고르지 않았습니다")'), 4000, "미완성 교체 안내가 뜨지 않았습니다");

@@ -1,0 +1,54 @@
+.dg-status-guide {
+  width: min(100%, 38rem);
+  margin: 0.75rem auto 1rem;
+  padding: 0.7rem 0.85rem;
+  border-left: 3px solid #0d6261;
+  background: #e5efed;
+  color: #1e2528;
+  line-height: 1.5;
+}
+
+.dg-bench-scroll-frame {
+  position: relative;
+  min-width: 0;
+}
+
+.dg-bench-scroll-frame::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0.35rem;
+  width: 2.5rem;
+  background: linear-gradient(90deg, rgba(244, 245, 242, 0), #f4f5f2 85%);
+  content: "";
+  pointer-events: none;
+}
+
+.dg-bench-card--confirmed {
+  border-color: #0d6261;
+  box-shadow: inset 0 0 0 1px #d8f0a4;
+}
+
+.dg-bench-card__name {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 700;
+}
+
+.dg-bench-card__badge {
+  padding: 0.1rem 0.3rem;
+  border-radius: 999px;
+  background: #d8f0a4;
+  color: #173c37;
+  font-size: 0.62rem;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dg-bench-scroll-frame {
+    scroll-behavior: auto;
+  }
+}

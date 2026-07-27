@@ -22,6 +22,87 @@
   color: #fff;
 }
 
+.mh-chances {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: .28rem;
+  min-width: 0;
+}
+
+.mh-chance-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  align-items: baseline;
+  font-size: .72rem;
+  line-height: 1.2;
+}
+
+.mh-chance-label {
+  color: #d8f0a4;
+  font-weight: 700;
+}
+
+.mh-chance-counts,
+.mh-chance-empty {
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.mh-chance-counts {
+  display: flex;
+  gap: .3rem;
+  white-space: nowrap;
+}
+
+.mh-chance-zero {
+  display: flex;
+  gap: .45rem;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.mh-chance-empty {
+  color: #f4f5f2;
+}
+
+.mh-chance-bar {
+  position: relative;
+  height: .42rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #396e5d;
+}
+
+.mh-chance-bar-user,
+.mh-chance-bar-opponent {
+  position: absolute;
+  inset-block: 0;
+  transition: width .24s ease-out;
+}
+
+.mh-chance-bar-user {
+  left: 0;
+  width: var(--mh-user-chance-share);
+  background: #d8f0a4;
+}
+
+.mh-chance-bar-opponent {
+  right: 0;
+  width: calc(100% - var(--mh-user-chance-share));
+  background: #7a3428;
+}
+
+.mh-chance-bar-empty {
+  border: 1px solid #396e5d;
+  background: transparent;
+}
+
+.mh-chance-bar-empty .mh-chance-bar-user,
+.mh-chance-bar-empty .mh-chance-bar-opponent {
+  display: none;
+}
+
 .mh-team {
   display: flex;
   align-items: baseline;
@@ -235,6 +316,10 @@
     padding: .65rem .75rem;
   }
 
+  .mh-chance-bar {
+    height: .32rem;
+  }
+
   .mh-clock {
     text-align: left;
   }
@@ -282,6 +367,11 @@
   .mh-pulse-opponentGoal .mh-scoreboard,
   .mh-pulse-counter {
     animation: none;
+  }
+
+  .mh-chance-bar-user,
+  .mh-chance-bar-opponent {
+    transition: none;
   }
 }
 

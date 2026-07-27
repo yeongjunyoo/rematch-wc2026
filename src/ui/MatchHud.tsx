@@ -8,6 +8,9 @@ export interface MatchHudProps {
   readonly opponentTeamName: string;
   readonly userGoals: number;
   readonly opponentGoals: number;
+  /** 이어받은 뒤 기록된 찬스 수. 도메인 사건을 그대로 센 값이다. */
+  readonly userChances: number;
+  readonly opponentChances: number;
   /** 예: "63분", "승부차기 3번째 킥" */
   readonly clockLabel: string;
   /** 예: "정규시간", "연장전" */
@@ -31,6 +34,8 @@ export function MatchHud({
   opponentTeamName,
   userGoals,
   opponentGoals,
+  userChances,
+  opponentChances,
   clockLabel,
   phaseLabel,
   tokensRemaining,
@@ -46,6 +51,13 @@ export function MatchHud({
 }: MatchHudProps): React.JSX.Element {
   const visibleTokenCount = Math.max(0, totalTokens);
   const remainingTokenCount = Math.min(Math.max(0, tokensRemaining), visibleTokenCount);
+  const visibleUserChances = Math.max(0, userChances);
+  const visibleOpponentChances = Math.max(0, opponentChances);
+  const totalChances = visibleUserChances + visibleOpponentChances;
+  const userChanceShare = totalChances === 0 ? 0 : (visibleUserChances / totalChances) * 100;
+  const chanceBarStyle = {
+    "--mh-user-chance-share": `${userChanceShare}%`,
+  } as React.CSSProperties;
 
   return (
     <section className={`mh-hud mh-pulse-${pulse}`} aria-label="경기 조작판">
@@ -58,6 +70,41 @@ export function MatchHud({
         <div className="mh-team mh-team-opponent">
           <strong className="mh-score">{opponentGoals}</strong>
           <span className="mh-team-name">{opponentTeamName}</span>
+        </div>
+        <div className="mh-chances">
+          <div className="mh-chance-summary">
+            <span className="mh-chance-label">만든 찬스</span>
+            {totalChances === 0 ? (
+              <span className="mh-chance-zero">
+                <span className="mh-chance-empty">아직 기록 없음</span>
+                <span
+                  className="mh-chance-counts"
+                  aria-label={`${userTeamName} 만든 찬스 0개, ${opponentTeamName} 만든 찬스 0개`}
+                >
+                  <span>우리 0</span>
+                  <span aria-hidden="true">:</span>
+                  <span>상대 0</span>
+                </span>
+              </span>
+            ) : (
+              <span
+                className="mh-chance-counts"
+                aria-label={`${userTeamName} 만든 찬스 ${visibleUserChances}개, ${opponentTeamName} 만든 찬스 ${visibleOpponentChances}개`}
+              >
+                <span>우리 {visibleUserChances}</span>
+                <span aria-hidden="true">:</span>
+                <span>상대 {visibleOpponentChances}</span>
+              </span>
+            )}
+          </div>
+          <div
+            className={totalChances === 0 ? "mh-chance-bar mh-chance-bar-empty" : "mh-chance-bar"}
+            style={chanceBarStyle}
+            aria-hidden="true"
+          >
+            <span className="mh-chance-bar-user" />
+            <span className="mh-chance-bar-opponent" />
+          </div>
         </div>
       </div>
 
