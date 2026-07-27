@@ -402,6 +402,8 @@ export interface ScenarioDeclaration {
   readonly format: MatchFormat;
   readonly userTeam: TeamRef;
   readonly opponentTeam: TeamRef;
+  /** 화면과 엔진이 같은 상대 대형을 읽어야 하므로 시나리오 데이터로 선언한다. */
+  readonly opponentFormation: FormationPreset;
   /** 사용자가 이어받는 시점(절대 분). */
   readonly interventionStartMinute: number;
   /** 이어받는 시점의 스코어. */

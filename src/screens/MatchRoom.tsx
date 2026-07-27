@@ -12,6 +12,10 @@ import { DATA_VERSION, ENGINE_VERSION } from "../domain/version";
 import { clockLabel, commentaryFor, isFeedWorthy, phaseLabel } from "../ui/commentary";
 import { defaultFormation, initialPlacements } from "../ui/squad";
 import { matchHash, reportHash } from "../router";
+import { LivePitch } from "../ui/LivePitch";
+import type { LivePitchProps } from "../ui/LivePitch";
+import { MatchHud } from "../ui/MatchHud";
+import { ballPosition, emphasisFrom, keyPlayerIdsFrom, opponentPitchPlayers, userPitchPlayers } from "../ui/matchView";
 import { Dugout } from "./Dugout";
 
 interface MatchRoomProps {
@@ -21,11 +25,13 @@ interface MatchRoomProps {
 
 /** 1배속에서 경기 1분이 흐르는 실제 시간. 한 경기가 몇 분 안에 끝나야 심사자가 끝까지 본다. */
 const TICK_BASE_MS = 720;
-const SPEEDS = [1, 2, 4] as const;
-type Speed = (typeof SPEEDS)[number];
+type Speed = 1 | 2 | 4;
 
 /** 골과 상대 반격은 잠깐 멈춰 세워야 "내 결정이 만든 장면"으로 읽힌다. */
 const BEAT_HOLD_MS = 1700;
+
+/** 피치 강조는 배너보다 짧게 유지한다. 길면 다음 장면과 겹쳐 무엇이 방금 일어났는지 흐려진다. */
+const EMPHASIS_HOLD_MS = 1100;
 
 interface Beat {
   readonly tone: "goal" | "concede" | "counter";
@@ -62,24 +68,14 @@ function freshRuntime(scenario: ScenarioDeclaration, attemptIndex: number): Matc
   return createRuntime(scenario, world, initialState(scenario));
 }
 
-function Pitch({ userGoals, opponentGoals }: { readonly userGoals: number; readonly opponentGoals: number }) {
-  return (
-    <svg className="pitch" viewBox="0 0 100 64" role="img" aria-label={`경기 진행 전술판, 현재 ${userGoals}대${opponentGoals}`}>
-      <rect x="1" y="1" width="98" height="62" rx="2" className="pitch-grass" />
-      <rect x="1" y="1" width="98" height="62" rx="2" className="pitch-line" />
-      <path d="M50 1v62M1 20h16v24H1M99 20H83v24h16M1 27h6v10H1M99 27h-6v10h6" className="pitch-line" />
-      <circle cx="50" cy="32" r="9" className="pitch-line" />
-      <circle cx="50" cy="32" r=".8" className="pitch-line fill-line" />
-    </svg>
-  );
-}
-
 export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
   const scenario = getScenario(scenarioId);
   const [runtime, setRuntime] = useState<MatchRuntime | null>(() => scenario === undefined ? null : freshRuntime(scenario, attemptIndex));
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<Speed>(1);
   const [beat, setBeat] = useState<Beat | null>(null);
+  // 피치 강조는 연출 배너와 수명이 다르다. 배너는 멈춰 세우고, 강조는 흐름을 끊지 않는다.
+  const [emphasis, setEmphasis] = useState<LivePitchProps["emphasis"]>("none");
   const [formation, setFormation] = useState<FormationPreset>(() => defaultFormation(scenarioId));
   const [placements, setPlacements] = useState<readonly Placement[]>(() => scenario === undefined ? [] : initialPlacements(scenarioId));
   const [directives, setDirectives] = useState<TacticalDirectives>(NEUTRAL_DIRECTIVES);
@@ -100,6 +96,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
     setPlaying(false);
     setSpeed(1);
     setBeat(null);
+    setEmphasis("none");
     setFormation(defaultFormation(scenario.id));
     setPlacements(initialPlacements(scenario.id));
     setDirectives(NEUTRAL_DIRECTIVES);
@@ -138,6 +135,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
     }
     const fresh = events.slice(seenEventCount.current);
     seenEventCount.current = events.length;
+    setEmphasis(emphasisFrom(fresh));
     const next = beatFor(fresh, scenario);
     if (next === null) return;
     resumeAfterBeat.current = playing;
@@ -152,6 +150,13 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
     }, BEAT_HOLD_MS);
     return () => window.clearTimeout(timer);
   }, [beat]);
+
+  // 강조는 스스로 꺼진다. 계속 켜져 있으면 그건 강조가 아니라 배경이다.
+  useEffect(() => {
+    if (emphasis === "none") return undefined;
+    const timer = window.setTimeout(() => setEmphasis("none"), EMPHASIS_HOLD_MS);
+    return () => window.clearTimeout(timer);
+  }, [emphasis]);
 
   // 종료되면 결과를 넘기고 기록을 남긴다.
   useEffect(() => {
@@ -194,8 +199,8 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
         affordances: (() => {
           if (isFinished(runtime)) return ["결과 리포트 보기", "새 리매치 시작", "홈으로 돌아가기"];
           const notStarted = runtime.state.clock.absoluteMinute === scenario.interventionStartMinute && runtime.state.events.length === 0;
-          if (notStarted) return ["전술을 바꾼다", "그냥 지켜본다", "더그아웃 열기", "끝까지 건너뛰기", "홈으로 돌아가기"];
-          return [playing ? "일시정지" : "재개", "더그아웃 열기", "끝까지 건너뛰기", "1배속", "2배속", "4배속", "홈으로 돌아가기"];
+          if (notStarted) return ["전술 바꾸기", "그냥 지켜본다", "끝까지 건너뛰기", "홈으로 돌아가기"];
+          return [playing ? "일시정지" : "경기 재개", "전술 바꾸기", "끝까지 건너뛰기", "1배속", "2배속", "4배속", "홈으로 돌아가기"];
         })(),
         detail: {
           시도: attemptIndex + 1,
@@ -225,6 +230,10 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
   const tokensRemaining = Math.max(0, runtime.state.tokensRemaining - pendingCount);
   const started = runtime.state.clock.absoluteMinute > scenario.interventionStartMinute || runtime.state.events.length > 0;
   const feed = runtime.state.events.filter(isFeedWorthy).slice(-14).reverse();
+  // 피치 위 한 줄은 방금 일어난 일만 말한다. 피드 전체를 얹으면 그림을 가린다.
+  const latestLine = feed.length === 0 || !started
+    ? null
+    : `${clockLabel(feed[0]!.clock)} ${commentaryFor(feed[0]!, scenario)}`;
 
   const openDugout = () => {
     if (finished) return;
@@ -266,80 +275,78 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
         <h1>{scenario.displayTitle}</h1>
       </header>
 
-      <section className="match-layout">
-        <div className="match-details">
-          <div className={`scoreboard ${beat === null ? "" : `is-${beat.tone}`}`} aria-label="현재 스코어">
-            <span>{scenario.userTeam.displayName}</span>
-            <strong>{runtime.state.userGoals} : {runtime.state.opponentGoals}</strong>
-            <span>{scenario.opponentTeam.displayName}</span>
+      <MatchHud
+        userTeamName={scenario.userTeam.displayName}
+        opponentTeamName={scenario.opponentTeam.displayName}
+        userGoals={runtime.state.userGoals}
+        opponentGoals={runtime.state.opponentGoals}
+        clockLabel={clockLabel(runtime.state.clock)}
+        phaseLabel={phaseLabel(runtime.state.clock)}
+        tokensRemaining={tokensRemaining}
+        totalTokens={3}
+        playing={playing}
+        finished={finished}
+        speed={speed}
+        pulse={emphasis === "userGoal" || emphasis === "opponentGoal" || emphasis === "counter" ? emphasis : "none"}
+        onTogglePlay={() => setPlaying((current) => !current)}
+        onOpenDugout={openDugout}
+        onSpeed={setSpeed}
+        onSkip={skipToEnd}
+      />
+
+      <section className="match-stage" aria-label="경기 화면">
+        <LivePitch
+          userPlayers={userPitchPlayers(scenario.id, placements, keyPlayerIdsFrom(scenario, runtime.state.events))}
+          opponentPlayers={opponentPitchPlayers(scenario)}
+          ball={ballPosition(runtime.state.events, runtime.state.clock.absoluteMinute)}
+          userTeamName={scenario.userTeam.displayName}
+          opponentTeamName={scenario.opponentTeam.displayName}
+          emphasis={emphasis}
+          caption={latestLine}
+        />
+        {beat === null ? null : (
+          <div className={`beat-overlay is-${beat.tone}`} role="status">
+            <strong>{beat.headline}</strong>
+            <span>{beat.detail}</span>
           </div>
-
-          <p className="match-clock" role="status">
-            <b>{clockLabel(runtime.state.clock)}</b>
-            <span>{phaseLabel(runtime.state.clock)}</span>
-          </p>
-
-          <div className="transport" role="group" aria-label="경기 진행 제어">
-            <button type="button" className="transport-main" onClick={() => setPlaying((current) => !current)} disabled={finished}>
-              {playing ? "일시정지" : started ? "재개" : "경기 재개"}
-            </button>
-            <div className="speed-group" role="group" aria-label="재생 속도">
-              {SPEEDS.map((option) => (
-                <button key={option} type="button" className={option === speed ? "is-selected" : ""} aria-pressed={option === speed} onClick={() => setSpeed(option)}>{option}배속</button>
-              ))}
+        )}
+        {!started && !finished ? (
+          <div className="kickoff-overlay">
+            <p className="eyebrow">{scenario.interventionStartMinute}분, 당신이 벤치를 이어받았습니다</p>
+            <strong>{scenario.mission.brief}</strong>
+            {/*
+              자동 플레이테스트에서 캐주얼 페르소나가 두 번 연속 개입을 발견하지 못하고
+              재생만 하다 이탈했다. "무엇을 해야 결과가 바뀌는지 모르겠다"가 원문이다.
+              그래서 첫 화면의 가장 큰 행동을 재생이 아니라 전술 개입으로 바꾼다.
+              한 번에 한 가지만 제시하고, 그냥 보기는 부차 선택지로 내린다.
+            */}
+            <div className="kickoff-actions">
+              <button type="button" className="kickoff-primary" onClick={openDugout}>전술 바꾸기</button>
+              <button type="button" className="kickoff-secondary" onClick={() => setPlaying(true)}>그냥 지켜본다</button>
             </div>
-            <button type="button" className="text-button" onClick={skipToEnd} disabled={finished}>끝까지 건너뛰기</button>
+            <span>전술을 바꾸지 않으면 역사는 그대로 반복됩니다. 개입 토큰 {tokensRemaining}개를 쓸 수 있습니다.</span>
           </div>
-
-          <div className="token-row" aria-label={`개입 토큰 ${tokensRemaining}개 남음`}>
-            <span>개입 토큰</span>
-            {[1, 2, 3].map((token) => <b key={token} className={token <= tokensRemaining ? "" : "is-spent"}>{token}</b>)}
+        ) : null}
+        {!finished ? null : (
+          <div className="beat-overlay is-final" role="status">
+            <strong>경기 종료</strong>
+            <span>{runtime.state.userGoals} 대 {runtime.state.opponentGoals}</span>
           </div>
-          <button type="button" className="button-link intervention-button" onClick={openDugout} disabled={finished}>더그아웃 열기</button>
-
-          <dl className="match-meta">
-            <div><dt>이어받은 시점</dt><dd>{scenario.interventionStartMinute}분, {scenario.startingUserGoals}대{scenario.startingOpponentGoals}</dd></div>
-            <div><dt>경기 형식</dt><dd>{formatDescription(scenario)}</dd></div>
-            <div><dt>현재 포메이션</dt><dd>{formation}</dd></div>
-            <div><dt>매치 코드</dt><dd><code className="match-code">{matchCode}</code></dd></div>
-          </dl>
-
-          {notice === null ? null : <p className="match-notice" role="status">{notice}</p>}
-        </div>
-
-        <div className="match-stage">
-          <Pitch userGoals={runtime.state.userGoals} opponentGoals={runtime.state.opponentGoals} />
-          {beat === null ? null : (
-            <div className={`beat-overlay is-${beat.tone}`} role="status">
-              <strong>{beat.headline}</strong>
-              <span>{beat.detail}</span>
-            </div>
-          )}
-          {!started && !finished ? (
-            <div className="kickoff-overlay">
-              <p className="eyebrow">{scenario.interventionStartMinute}분, 당신이 벤치를 이어받았습니다</p>
-              <strong>{scenario.mission.brief}</strong>
-              {/*
-                자동 플레이테스트에서 캐주얼 페르소나가 두 번 연속 개입을 발견하지 못하고
-                재생만 하다 이탈했다. "무엇을 해야 결과가 바뀌는지 모르겠다"가 원문이다.
-                그래서 첫 화면의 가장 큰 행동을 재생이 아니라 전술 개입으로 바꾼다.
-                한 번에 한 가지만 제시하고, 그냥 보기는 부차 선택지로 내린다.
-              */}
-              <div className="kickoff-actions">
-                <button type="button" className="kickoff-primary" onClick={openDugout}>전술을 바꾼다</button>
-                <button type="button" className="kickoff-secondary" onClick={() => setPlaying(true)}>그냥 지켜본다</button>
-              </div>
-              <span>전술을 바꾸지 않으면 역사는 그대로 반복됩니다. 개입 토큰 {tokensRemaining}개를 쓸 수 있습니다.</span>
-            </div>
-          ) : null}
-          {!finished ? null : (
-            <div className="beat-overlay is-final" role="status">
-              <strong>경기 종료</strong>
-              <span>{runtime.state.userGoals} 대 {runtime.state.opponentGoals}</span>
-            </div>
-          )}
-        </div>
+        )}
       </section>
+
+      {notice === null ? null : <p className="match-notice" role="status">{notice}</p>}
+
+      {/* 상세 수치는 접어 둔다. 첫 화면에서 표가 먼저 보이면 경기가 아니라 문서로 읽힌다. */}
+      <details className="match-detail-fold">
+        <summary>경기 정보와 매치 코드</summary>
+        <dl className="match-meta">
+          <div><dt>이어받은 시점</dt><dd>{scenario.interventionStartMinute}분, {scenario.startingUserGoals}대{scenario.startingOpponentGoals}</dd></div>
+          <div><dt>경기 형식</dt><dd>{formatDescription(scenario)}</dd></div>
+          <div><dt>현재 포메이션</dt><dd>{formation}</dd></div>
+          <div><dt>매치 코드</dt><dd><code className="match-code">{matchCode}</code></dd></div>
+        </dl>
+      </details>
 
       {!finished ? null : (
         <section className="report-section">

@@ -1,0 +1,212 @@
+.lp-frame {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #173c37;
+  border-radius: 0.7rem;
+  background: #173c37;
+}
+
+.lp-pitch {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.lp-grass {
+  fill: #396e5d;
+}
+
+.lp-markings {
+  fill: none;
+  stroke: #eef5ed;
+  stroke-width: 0.55;
+  vector-effect: non-scaling-stroke;
+}
+
+.lp-spot {
+  fill: #eef5ed;
+  stroke: none;
+}
+
+.lp-goal {
+  stroke-width: 0.8;
+}
+
+.lp-danger-zone {
+  fill: none;
+  stroke-width: 0.75;
+  transform-origin: center;
+  animation: lp-risk-ring 1.15s ease-out 2;
+}
+
+.lp-danger-zone rect {
+  fill: rgba(216, 240, 164, 0.12);
+}
+
+.lp-danger-zone circle {
+  fill: none;
+}
+
+.lp-danger-user {
+  stroke: #d8f0a4;
+}
+
+.lp-danger-opponent {
+  stroke: #7a3428;
+}
+
+.lp-danger-opponent rect {
+  fill: rgba(122, 52, 40, 0.18);
+}
+
+.lp-goal-flash {
+  opacity: 0;
+  animation: lp-goal-flash 0.58s ease-out;
+}
+
+.lp-emphasis-userGoal .lp-goal-flash {
+  fill: #d8f0a4;
+}
+
+.lp-emphasis-opponentGoal .lp-goal-flash {
+  fill: #7a3428;
+}
+
+.lp-player {
+  transform-box: view-box;
+  transform-origin: center;
+  transition: transform 480ms cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+.lp-player-shirt {
+  stroke: #f4f5f2;
+  stroke-width: 0.5;
+}
+
+.lp-team-user .lp-player-shirt {
+  fill: #d8f0a4;
+}
+
+.lp-team-user .lp-player-stripe {
+  fill: #0d6261;
+}
+
+.lp-team-opponent .lp-player-shirt {
+  fill: #173c37;
+}
+
+.lp-team-opponent .lp-player-stripe {
+  fill: #f4f5f2;
+}
+
+.lp-key-ring {
+  fill: none;
+  stroke: #d8f0a4;
+  stroke-width: 0.7;
+}
+
+.lp-team-opponent .lp-key-ring {
+  stroke: #f4f5f2;
+}
+
+.lp-player-label {
+  fill: #f4f5f2;
+  font-size: 2.25px;
+  font-weight: 750;
+  letter-spacing: -0.08px;
+  paint-order: stroke;
+  stroke: #173c37;
+  stroke-width: 0.95px;
+  stroke-linejoin: round;
+  text-anchor: middle;
+}
+
+.lp-team-user .lp-player-label {
+  fill: #1e2528;
+  stroke: #d8f0a4;
+}
+
+.lp-team-countering .lp-player-shirt {
+  animation: lp-counter-pulse 0.72s ease-out 2;
+}
+
+.lp-ball {
+  transform-box: view-box;
+  transform-origin: center;
+  transition: transform 560ms cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+.lp-ball circle {
+  fill: #f4f5f2;
+  stroke: #1e2528;
+  stroke-width: 0.4;
+}
+
+.lp-ball path {
+  fill: #1e2528;
+}
+
+.lp-caption rect {
+  fill: rgba(23, 60, 55, 0.94);
+  stroke: #d8f0a4;
+  stroke-width: 0.35;
+}
+
+.lp-caption text {
+  fill: #f4f5f2;
+  font-size: 2.35px;
+  font-weight: 750;
+  letter-spacing: -0.05px;
+}
+
+@keyframes lp-risk-ring {
+  from { opacity: 0.9; }
+  to { opacity: 0.18; }
+}
+
+@keyframes lp-goal-flash {
+  0% { opacity: 0; }
+  28% { opacity: 0.28; }
+  100% { opacity: 0; }
+}
+
+@keyframes lp-counter-pulse {
+  0% { stroke-width: 0.5; }
+  50% { stroke: #d8f0a4; stroke-width: 1.15; }
+  100% { stroke-width: 0.5; }
+}
+
+@media (max-width: 480px) {
+  .lp-frame {
+    border-radius: 0.55rem;
+  }
+
+  .lp-player-label {
+    font-size: 2.05px;
+  }
+
+  .lp-caption text {
+    font-size: 2.15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-danger-zone,
+  .lp-goal-flash,
+  .lp-team-countering .lp-player-shirt {
+    animation: none;
+  }
+
+  .lp-player,
+  .lp-ball {
+    transition: none;
+  }
+}
+
+/*
+  두 팀을 같은 무게로 그리면 22개 토큰이 서로를 지운다. 사용자가 지휘하는 팀이 주인공이므로
+  상대는 위치만 읽히도록 한 단계 낮춘다. 전술 도해의 명료성 상한을 지키는 방식이기도 하다.
+*/
+.lp-team-opponent .lp-player-shirt { opacity: .72; }
+.lp-team-opponent .lp-player-label { opacity: .58; font-size: 85%; }
+.lp-team-user .lp-player-label { paint-order: stroke fill; }

@@ -195,8 +195,7 @@ function userProfile(scenario: ScenarioDeclaration, intervention: Intervention |
 }
 
 function opponentProfile(scenario: ScenarioDeclaration): TeamProfile {
-  // Authored opponent defaults keep unsourced squads deterministic without claiming real lineups.
-  const formation: FormationPreset = scenario.id === "za-kor-2026" ? "4-2-3-1" : scenario.id === "kor-ita-2002" ? "5-4-1" : "4-3-3";
+  const formation = scenario.opponentFormation;
   const rated = FORMATION_SLOTS[formation].map((slot, index) => {
     const position = slotRole(slot);
     return { ratings: ratingsFor(scenario.id, `authored-opponent-${index + 1}`, position), fit: "primary" as const };

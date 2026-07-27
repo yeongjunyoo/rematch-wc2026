@@ -1,5 +1,7 @@
 import type { ScenarioDeclaration } from "../../domain/types";
 
+// 근거 없는 실제 명단을 주장하지 않으면서 상대 전력을 결정적으로 유지한다.
+
 const SOUTH_AFRICA_KOREA: ScenarioDeclaration = {
   id: "za-kor-2026",
   displayTitle: "남아공 1대0 대한민국",
@@ -14,6 +16,7 @@ const SOUTH_AFRICA_KOREA: ScenarioDeclaration = {
   },
   userTeam: { id: "kor", displayName: "대한민국", crestKey: "kr-minimal" },
   opponentTeam: { id: "za", displayName: "남아공", crestKey: "za-minimal" },
+  opponentFormation: "4-2-3-1",
   interventionStartMinute: 63,
   startingUserGoals: 0,
   startingOpponentGoals: 1,
@@ -57,6 +60,7 @@ const KOREA_CZECHIA: ScenarioDeclaration = {
   },
   userTeam: { id: "kor", displayName: "대한민국", crestKey: "kr-minimal" },
   opponentTeam: { id: "cze", displayName: "체코", crestKey: "cz-minimal" },
+  opponentFormation: "4-3-3",
   interventionStartMinute: 67,
   startingUserGoals: 1,
   startingOpponentGoals: 1,
@@ -87,6 +91,7 @@ const SPAIN_ARGENTINA_FINAL: ScenarioDeclaration = {
   },
   userTeam: { id: "arg", displayName: "아르헨티나", crestKey: "ar-minimal" },
   opponentTeam: { id: "esp", displayName: "스페인", crestKey: "es-minimal" },
+  opponentFormation: "4-3-3",
   interventionStartMinute: 90,
   startingUserGoals: 0,
   startingOpponentGoals: 0,
@@ -117,6 +122,7 @@ const GERMANY_PARAGUAY: ScenarioDeclaration = {
   },
   userTeam: { id: "ger", displayName: "독일", crestKey: "de-minimal" },
   opponentTeam: { id: "par", displayName: "파라과이", crestKey: "py-minimal" },
+  opponentFormation: "4-3-3",
   interventionStartMinute: 52,
   startingUserGoals: 1,
   startingOpponentGoals: 1,
@@ -154,6 +160,7 @@ const KOREA_ITALY_2002: ScenarioDeclaration = {
   },
   userTeam: { id: "kor", displayName: "대한민국", crestKey: "kr-minimal" },
   opponentTeam: { id: "ita", displayName: "이탈리아", crestKey: "it-minimal" },
+  opponentFormation: "5-4-1",
   interventionStartMinute: 90,
   startingUserGoals: 1,
   startingOpponentGoals: 1,

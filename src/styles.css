@@ -118,3 +118,25 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
 .kickoff-actions { display: flex; flex-wrap: wrap; gap: .55rem; margin: .5rem 0 .2rem; }
 .kickoff-primary { min-height: 3rem; padding: .8rem 1.3rem; border: 0; border-radius: .45rem; background: #d8f0a4; color: #14332e; font: inherit; font-size: 1.05rem; font-weight: 750; cursor: pointer; }
 .kickoff-secondary { min-height: 3rem; padding: .8rem 1rem; border: 1px solid rgba(255,255,255,.45); border-radius: .45rem; background: transparent; color: #e8f1ee; font: inherit; cursor: pointer; }
+
+/* 상세 수치 접기. 경기 화면이 문서로 읽히지 않게 표를 한 단계 뒤로 보낸다. */
+.match-detail-fold { margin-top: 1.25rem; border-top: 1px solid #cbd1cd; padding-top: .75rem; }
+.match-detail-fold > summary { cursor: pointer; padding: .55rem 0; color: #0d6261; font-weight: 700; list-style: none; }
+.match-detail-fold > summary::-webkit-details-marker { display: none; }
+.match-detail-fold > summary::before { content: "+ "; }
+.match-detail-fold[open] > summary::before { content: "- "; }
+.match-stage { position: relative; margin-top: 1rem; }
+
+/*
+  킥오프 안내가 피치를 통째로 덮으면 첫 화면에서 이게 축구 게임이라는 사실 자체가 사라진다.
+  플레이테스트 3바퀴에서 사용자가 경기를 한 번도 보지 못한 직접 원인이라 하단 배너로 내린다.
+*/
+.kickoff-overlay { inset: auto 0 0; align-content: end; border-radius: 0 0 .5rem .5rem; background: linear-gradient(to bottom, rgba(23,60,55,0), rgba(23,60,55,.93) 22%); padding-top: 2.2rem; }
+.kickoff-overlay strong { font-size: 1.02rem; }
+
+@media (max-width: 640px) {
+  /* 좁은 화면에서는 배너조차 피치를 다 가린다. 겹치지 말고 아래로 내려 둘 다 보이게 한다. */
+  .kickoff-overlay { position: static; inset: auto; background: #173c37; border-radius: .5rem; margin-top: .6rem; padding: 1rem; }
+  .kickoff-actions { display: grid; }
+  .kickoff-primary, .kickoff-secondary { width: 100%; }
+}
