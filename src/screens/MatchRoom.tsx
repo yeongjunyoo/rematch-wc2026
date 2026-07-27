@@ -220,7 +220,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
           // 더그아웃이 열려 있으면 뒤 화면 조작은 눌리지 않는다. 스냅샷이 그것들을 계속 발행하면
           // 에이전트는 사람이 못 누르는 것을 누르려 하고, 사람이 누를 수 있는 것은 보지 못한다.
           if (isDugoutOpen) return ["포메이션", "팀 지시", "개입 확정", "취소", "닫기"];
-          if (decisionPrompt) return ["전술 바꾸기", "이대로 본다"];
+          if (decisionPrompt) return ["지금 전술 바꾸기", "이대로 본다"];
           if (isFinished(runtime)) return ["결과 리포트 보기", "새 리매치 시작", "홈으로 돌아가기"];
           const notStarted = runtime.state.clock.absoluteMinute === scenario.interventionStartMinute && runtime.state.events.length === 0;
           if (notStarted) return ["전술 바꾸기", "경기 재개", "끝까지 건너뛰기", "홈으로 돌아가기"];
@@ -322,9 +322,11 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
         userChances={chanceTally.user}
         opponentChances={chanceTally.opponent}
         playing={playing}
-        // 결정을 요구하는 동안에는 뒤 화면 조작을 잠근다. 그러지 않으면 사용자가
-        // 요구를 보지 못한 채 건너뛰기를 눌러 이 게임의 핵심 행동을 영영 만나지 못한다.
-        finished={finished || decisionPrompt}
+        finished={finished}
+        // 결정을 요구하는 동안에는 재생 제어만 잠근다. 건너뛰기로 요구를 지나쳐 버리면
+        // 사용자가 이 게임의 핵심 행동을 영영 만나지 못하지만, 개입 입구까지 잠그면
+        // 결정을 요구하면서 결정을 막는 것이 된다.
+        playbackLocked={decisionPrompt}
         speed={speed}
         pulse={emphasis === "userGoal" || emphasis === "opponentGoal" || emphasis === "counter" ? emphasis : "none"}
         onTogglePlay={() => setPlaying((current) => !current)}
@@ -354,7 +356,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
             <p className="eyebrow">{runtime.state.clock.absoluteMinute}분, 아직 아무것도 바꾸지 않았습니다</p>
             <strong>이대로 두면 역사가 그대로 반복됩니다.</strong>
             <div className="kickoff-actions">
-              <button type="button" className="kickoff-primary" onClick={openDugout}>전술 바꾸기</button>
+              <button type="button" className="kickoff-primary" onClick={openDugout}>지금 전술 바꾸기</button>
               <button type="button" className="kickoff-secondary" onClick={() => { setDecisionPrompt(false); setPlaying(true); }}>이대로 본다</button>
             </div>
             <span>{scenario.mission.brief}</span>
