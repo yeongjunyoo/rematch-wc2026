@@ -1,5 +1,5 @@
 import { FORMATION_SLOTS, slotRole } from "../domain/tactics";
-import type { MatchEvent, Placement, ScenarioDeclaration, Side } from "../domain/types";
+import type { MatchEvent, Placement, ScenarioDeclaration } from "../domain/types";
 import { squadFor } from "./squad";
 import type { LivePitchPlayer, LivePitchProps } from "./LivePitch";
 
@@ -78,27 +78,21 @@ export function keyPlayerIdsFrom(scenario: ScenarioDeclaration, events: readonly
 }
 
 /**
- * 공 위치.
+ * 경기 초점.
  *
- * 시뮬레이션은 공의 좌표를 만들지 않는다. 그래서 마지막 사건이 어느 쪽에서 일어났는지로
- * 공이 있을 법한 지역을 정하고, 사건이 없는 분에는 분 값으로만 결정되는 완만한 흔들림을 준다.
- * 난수를 쓰지 않는 이유는 같은 매치 코드가 같은 화면을 재현해야 하기 때문이다.
+ * 이는 관측된 공 위치가 아니라 마지막 공격 사건이 어느 진영에서 일어났는지의 시각화다.
+ * 시뮬레이션이 만든 사건만 읽고, 최근 사건이 없으면 중앙을 가리킨다.
  */
-export function ballPosition(events: readonly MatchEvent[], minute: number): { readonly x: number; readonly y: number } {
-  const drift = Math.sin(minute / 3) * 14;
+export function matchFocusPoint(events: readonly MatchEvent[], minute: number): { readonly x: number; readonly y: number } {
   const latest = [...events].reverse().find((event) => event.type === "chance" || event.type === "goal" || event.type === "penaltyAttempt");
-  if (latest === undefined) return { x: 50, y: clamp(50 + drift, PITCH_MIN_Y, PITCH_MAX_Y) };
-  if (latest.type === "penaltyAttempt") return { x: latest.side === "user" ? 88 : 12, y: 50 };
-  const attacking: Side = latest.side;
-  const recent = latest.clock.absoluteMinute >= minute - 1;
-  if (!recent) return { x: clamp(50 + drift * 0.6, PITCH_MIN_X, PITCH_MAX_X), y: clamp(50 - drift, PITCH_MIN_Y, PITCH_MAX_Y) };
-  return {
-    x: attacking === "user" ? 84 : 16,
-    y: clamp(50 + drift * 0.8, PITCH_MIN_Y, PITCH_MAX_Y),
-  };
+  if (latest === undefined || latest.clock.absoluteMinute > minute || latest.clock.absoluteMinute < minute - 1) {
+    return { x: 50, y: 50 };
+  }
+  return { x: latest.side === "user" ? 84 : 16, y: 50 };
 }
 
-/** 이번 tick에 새로 생긴 사건 중 화면이 강조해야 할 것. */
+
+/** 골은 경기 결과를 즉시 바꾸므로, 같은 tick의 반격과 찬스보다 먼저 보여야 한다. */
 export function emphasisFrom(freshEvents: readonly MatchEvent[]): LivePitchProps["emphasis"] {
   const goal = freshEvents.find((event) => event.type === "goal");
   if (goal !== undefined && goal.type === "goal") return goal.side === "user" ? "userGoal" : "opponentGoal";

@@ -81,6 +81,10 @@ export function killBrowser(handle) {
   rmSync(handle.profile, { recursive: true, force: true });
 }
 
+function normalizeHash(hash) {
+  return hash === "" || hash === "#" || hash === "#/" ? "#/" : hash;
+}
+
 export class Page {
   #socket;
   #nextId = 1;
@@ -122,8 +126,14 @@ export class Page {
   }
 
   async goto(hash) {
+    const targetHash = normalizeHash(hash);
     await this.evaluate(`(() => { window.location.hash = ${JSON.stringify(hash)}; return true; })()`);
-    await waitFor(() => this.evaluate('document.querySelector("#root").children.length > 0'), 5000, `${hash} 렌더 실패`);
+    await waitFor(async () => {
+      const snapshot = await this.snapshot();
+      const actualHash = snapshot === null ? "스냅샷 없음" : String(snapshot.hash);
+      if (snapshot !== null && normalizeHash(actualHash) === targetHash) return true;
+      throw new Error(`목표 해시 ${targetHash}, 실제 해시 ${actualHash}`);
+    }, 5000, `목표 해시 ${targetHash} 도달 실패`);
   }
 
   text() {

@@ -11,7 +11,7 @@
  */
 import process from "node:process";
 
-import { Page, baseUrlFor, killBrowser, launchBrowser, sleep, startPreview, waitFor } from "./lib/cdp.mjs";
+import { Page, baseUrlFor, killBrowser, launchBrowser, startPreview, waitFor } from "./lib/cdp.mjs";
 
 /** REMATCH_BASE를 주면 배포된 주소를 그대로 검사한다. 주지 않으면 로컬 dist를 띄운다. */
 const REMOTE = process.env.REMATCH_BASE;
@@ -55,13 +55,20 @@ try {
   check("경기 피드에 장면이 쌓인다", await page.evaluate(`document.querySelectorAll(".event-feed li").length > 0`));
 
   // 2. 개입이 토큰을 소모한다
+  // 토큰 잔량도 마크업이 아니라 스냅샷 계약에서 읽는다.
+  const tokensLeft = async () => (await page.snapshot())?.detail?.남은개입토큰;
+
   check("일시정지할 수 있다", await page.clickText("일시정지"));
   check("더그아웃이 열린다", await page.clickText("전술 바꾸기"));
   await waitFor(() => page.evaluate(`document.querySelector(".dugout-overlay") !== null`), 5000, "더그아웃이 열리지 않았습니다");
   // 탭 두 번으로 교체가 되는지. 드래그만 되던 시절 축구 팬 페르소나가 손흥민을 못 넣고 이탈했다.
   check("벤치 선수를 눌러 고를 수 있다", await page.clickText("손흥민"));
   await waitFor(() => page.evaluate('(document.querySelector(".dugout-notice")?.innerText ?? "").includes("자리를 피치에서 고르세요")'), 4000, "벤치 선택 안내가 뜨지 않았습니다");
-  check("교체 대상 안내가 뜬다", true);
+  const tokensBeforeIncompleteSubstitution = await tokensLeft();
+  check("미완성 교체를 확정할 수 있다", await page.clickText("개입 확정"));
+  await waitFor(() => page.evaluate('(document.querySelector(".dugout-notice")?.innerText ?? "").includes("자리를 아직 고르지 않았습니다")'), 4000, "미완성 교체 안내가 뜨지 않았습니다");
+  check("미완성 교체 뒤 더그아웃이 열린 채 남는다", await page.evaluate(`document.querySelector(".dugout-overlay") !== null`));
+  check("미완성 교체에 토큰이 소모되지 않는다", (await tokensLeft()) === tokensBeforeIncompleteSubstitution);
   check("피치 선수를 눌러 교체한다", await page.clickText("오현규"));
   await waitFor(() => page.evaluate('(document.querySelector(".dugout-notice")?.innerText ?? "").includes("교체 카드를 사용했습니다")'), 4000, "교체가 성립하지 않았습니다");
   check("손흥민이 실제로 투입된다", await page.evaluate('[...document.querySelectorAll(".player-token")].some((node) => node.innerText.includes("손흥민"))'));
@@ -76,10 +83,14 @@ try {
   })()`);
   check("개입을 확정한다", await page.clickText("개입 확정"));
   await waitFor(() => page.evaluate(`document.querySelector(".dugout-overlay") === null`), 5000, "더그아웃이 닫히지 않았습니다");
-  // 토큰 잔량도 마크업이 아니라 스냅샷 계약에서 읽는다.
-  const tokensLeft = async () => (await page.snapshot())?.detail?.남은개입토큰;
   await waitFor(async () => (await tokensLeft()) === 2, 5000, "개입 토큰이 소모되지 않았습니다");
   check("개입 토큰이 하나 줄어든다", (await tokensLeft()) === 2);
+  // 개입을 확정하면 경기가 스스로 재개된다. 킥오프 배너는 이미 사라졌으므로 그냥 지켜본다는 없다.
+  check("개입 확정이 경기를 자동으로 재개한다", (await page.snapshot())?.detail?.재생중 === true);
+  const substitutionInFeed = async () => (await page.snapshot())?.feed.some((event) => event.includes("손흥민") && event.includes("오현규")) ?? false;
+  await waitFor(substitutionInFeed, 12000, "경기 피드에 교체 사건이 쌓이지 않았습니다");
+  check("경기 피드가 들어간 선수와 나간 선수 이름을 남긴다", await substitutionInFeed());
+  check("교체 뒤 일시정지할 수 있다", await page.clickText("일시정지"));
 
   // 3. 바꾼 게 없으면 토큰을 쓰지 않는다
   check("더그아웃을 다시 연다", await page.clickText("전술 바꾸기"));
@@ -95,7 +106,6 @@ try {
     await page.goto(`#/match/${scenarioId}`);
     await page.clickText("끝까지 건너뛰기");
     await waitFor(() => page.evaluate(`document.body.innerText.includes("경기가 끝났습니다")`), 15000, `${scenarioId} 경기가 끝나지 않았습니다`);
-    check(`${scenarioId} 경기가 종료된다`, true);
 
     await page.clickText("결과 리포트 보기");
     await waitFor(() => page.evaluate(`document.body.innerText.includes("등급")`), 5000, `${scenarioId} 리포트가 등급을 보여주지 않았습니다`);

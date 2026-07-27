@@ -200,10 +200,6 @@
   animation: mh-counter .32s ease-out;
 }
 
-.mh-shake {
-  animation: mh-shake .32s ease-out;
-}
-
 @keyframes mh-user-goal {
   0% { transform: scale(1); background: #173c37; }
   45% { transform: scale(1.025); background: #0d6261; }
@@ -219,12 +215,6 @@
 @keyframes mh-counter {
   0%, 100% { opacity: 1; background: #fafbf8; }
   45% { opacity: .92; background: #f3e6d8; }
-}
-
-@keyframes mh-shake {
-  0%, 100% { transform: translateX(0); }
-  30% { transform: translateX(-2px); }
-  70% { transform: translateX(2px); }
 }
 
 @media (max-width: 640px) {
@@ -289,8 +279,7 @@
 @media (prefers-reduced-motion: reduce) {
   .mh-pulse-userGoal .mh-scoreboard,
   .mh-pulse-opponentGoal .mh-scoreboard,
-  .mh-pulse-counter,
-  .mh-shake {
+  .mh-pulse-counter {
     animation: none;
   }
 }

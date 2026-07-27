@@ -130,21 +130,22 @@
   animation: lp-counter-pulse 0.72s ease-out 2;
 }
 
-.lp-ball {
+.lp-focus {
   transform-box: view-box;
   transform-origin: center;
   transition: transform 560ms cubic-bezier(0.22, 0.8, 0.3, 1);
 }
 
-.lp-ball circle {
-  fill: #f4f5f2;
-  stroke: #1e2528;
-  stroke-width: 0.4;
+.lp-focus-ring {
+  fill: rgba(216, 240, 164, 0.12);
+  stroke: #d8f0a4;
+  stroke-width: 0.55;
 }
 
-.lp-ball path {
-  fill: #1e2528;
+.lp-focus-center {
+  fill: #d8f0a4;
 }
+
 
 .lp-caption rect {
   fill: rgba(23, 60, 55, 0.94);
@@ -198,7 +199,7 @@
   }
 
   .lp-player,
-  .lp-ball {
+  .lp-focus {
     transition: none;
   }
 }

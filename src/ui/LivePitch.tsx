@@ -15,8 +15,8 @@ export interface LivePitchPlayer {
 export interface LivePitchProps {
   readonly userPlayers: readonly LivePitchPlayer[];
   readonly opponentPlayers: readonly LivePitchPlayer[];
-  /** 공 위치. 사용자 관점 좌표계는 선수와 동일하다. */
-  readonly ball: { readonly x: number; readonly y: number };
+  /** 경기의 초점. 관측된 공 좌표가 아니라 마지막 사건이 어느 진영에서 일어났는지의 시각화다. */
+  readonly focus: { readonly x: number; readonly y: number };
   readonly userTeamName: string;
   readonly opponentTeamName: string;
   readonly emphasis: "none" | "userChance" | "opponentChance" | "userGoal" | "opponentGoal" | "counter";
@@ -89,14 +89,14 @@ export function LivePitch(props: LivePitchProps): React.JSX.Element {
   const {
     userPlayers,
     opponentPlayers,
-    ball,
+    focus,
     userTeamName,
     opponentTeamName,
     emphasis,
     caption,
   } = props;
-  const ballPoint = pitchPoint(ball);
-  const ariaLabel = `경기 전술판. ${userTeamName} 대 ${opponentTeamName}. 사용자는 오른쪽으로 공격합니다. ${emphasisLabel(emphasis)}. 사용자 선수 ${userPlayers.map(playerDescription).join(", ")}. 상대 선수 ${opponentPlayers.map(playerDescription).join(", ")}.${caption === null ? "" : ` ${caption}`}`;
+  const focusPoint = pitchPoint(focus);
+  const ariaLabel = `경기 전술판. ${userTeamName} 대 ${opponentTeamName}. 사용자는 오른쪽으로 공격합니다. ${emphasisLabel(emphasis)}. 경기 초점은 마지막 사건의 진영을 나타냅니다. 사용자 선수 ${userPlayers.map(playerDescription).join(", ")}. 상대 선수 ${opponentPlayers.map(playerDescription).join(", ")}.${caption === null ? "" : ` ${caption}`}`;
   const isUserEvent = emphasis === "userChance" || emphasis === "userGoal";
   const isOpponentEvent = emphasis === "opponentChance" || emphasis === "opponentGoal";
 
@@ -124,9 +124,9 @@ export function LivePitch(props: LivePitchProps): React.JSX.Element {
         )}
         <PlayerTokens players={opponentPlayers} side="opponent" countering={emphasis === "counter"} />
         <PlayerTokens players={userPlayers} side="user" countering={false} />
-        <g className="lp-ball" transform={`translate(${ballPoint.x} ${ballPoint.y})`} aria-hidden="true">
-          <circle r="1.45" />
-          <path d="M0-1 .9-.3.55.9h-1.1L-.9-.3z" />
+        <g className="lp-focus" transform={`translate(${focusPoint.x} ${focusPoint.y})`} aria-hidden="true">
+          <circle className="lp-focus-ring" r="3.8" />
+          <circle className="lp-focus-center" r="1.15" />
         </g>
         {caption !== null && (
           <g className="lp-caption" aria-hidden="true">

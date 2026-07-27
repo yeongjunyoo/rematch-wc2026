@@ -15,7 +15,8 @@ import { matchHash, reportHash } from "../router";
 import { LivePitch } from "../ui/LivePitch";
 import type { LivePitchProps } from "../ui/LivePitch";
 import { MatchHud } from "../ui/MatchHud";
-import { ballPosition, emphasisFrom, keyPlayerIdsFrom, opponentPitchPlayers, userPitchPlayers } from "../ui/matchView";
+import type { MatchSpeed } from "../ui/MatchHud";
+import { emphasisFrom, keyPlayerIdsFrom, matchFocusPoint, opponentPitchPlayers, userPitchPlayers } from "../ui/matchView";
 import { Dugout } from "./Dugout";
 
 interface MatchRoomProps {
@@ -25,7 +26,7 @@ interface MatchRoomProps {
 
 /** 1배속에서 경기 1분이 흐르는 실제 시간. 한 경기가 몇 분 안에 끝나야 심사자가 끝까지 본다. */
 const TICK_BASE_MS = 720;
-type Speed = 1 | 2 | 4;
+type Speed = MatchSpeed;
 
 /** 골과 상대 반격은 잠깐 멈춰 세워야 "내 결정이 만든 장면"으로 읽힌다. */
 const BEAT_HOLD_MS = 1700;
@@ -298,7 +299,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
         <LivePitch
           userPlayers={userPitchPlayers(scenario.id, placements, keyPlayerIdsFrom(scenario, runtime.state.events))}
           opponentPlayers={opponentPitchPlayers(scenario)}
-          ball={ballPosition(runtime.state.events, runtime.state.clock.absoluteMinute)}
+          focus={matchFocusPoint(runtime.state.events, runtime.state.clock.absoluteMinute)}
           userTeamName={scenario.userTeam.displayName}
           opponentTeamName={scenario.opponentTeam.displayName}
           emphasis={emphasis}

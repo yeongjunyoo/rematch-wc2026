@@ -31,11 +31,6 @@ dt { color: #62706d; } dd { margin: 0; }
 .button-link { display: inline-block; align-self: flex-start; margin-top: auto; padding: 0.65rem 0.9rem; border-radius: 0.4rem; background: #0d6261; color: #fff; font-weight: 700; text-decoration: none; }
 .page-footer { padding: 2.5rem 0 1rem; }
 .shell-notice { padding: 0.75rem 1rem; border-left: 4px solid #0d6261; background: #e5efed; line-height: 1.5; }
-.match-layout { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 1.5rem; align-items: center; }
-.scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.75rem; align-items: center; padding: 1rem; background: #222b2a; color: #fff; border-radius: 0.55rem; }
-.scoreboard span:last-child { text-align: right; }.scoreboard strong { font-size: 1.5rem; white-space: nowrap; }
-.token-row { display: flex; align-items: center; gap: 0.55rem; margin-top: 1.2rem; }.token-row span { margin-right: 0.3rem; }.token-row b { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 50%; background: #0d6261; color: #fff; }
-.pitch { width: 100%; height: auto; display: block; }.pitch-grass { fill: #396e5d; }.pitch-line { fill: none; stroke: #eef5ed; stroke-width: 0.55; }.fill-line { fill: #eef5ed; }
 .screen-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 2rem; }
 .report-section, .help-section { padding: 1.25rem 0; border-top: 1px solid #cbd1cd; }.report-section h2, .help-section h2 { font-size: 1.25rem; }
 table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text-align: left; vertical-align: top; border-bottom: 1px solid #dde1de; }th { width: 35%; color: #50605c; }
@@ -43,57 +38,39 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
 .help-section p { line-height: 1.7; }
 
 @media (max-width: 640px) {
-  .scenario-grid, .match-layout { grid-template-columns: 1fr; }
+  .scenario-grid { grid-template-columns: 1fr; }
   .scenario-card.featured { grid-column: auto; }
   .scenario-meta div, .match-meta div { grid-template-columns: 1fr; gap: 0.15rem; }
-  .scoreboard { gap: 0.4rem; font-size: 0.88rem; }.scoreboard strong { font-size: 1.15rem; }
   .grade-list li { flex-direction: column; gap: 0.2rem; }
   th { width: 40%; }
 }
-.token-row b.is-spent { background: #aab3b0; color: #46504e; }
-.intervention-button { border: 0; cursor: pointer; margin-top: 1rem; font: inherit; }
 .match-notice { margin: 1rem 0 0; padding: 0.7rem 0.85rem; background: #e5efed; border-left: 3px solid #0d6261; line-height: 1.5; }
 .dugout-overlay { position: fixed; inset: 0; z-index: 10; overflow-y: auto; padding: 1rem; background: #f4f5f2; }
 .dugout-header, .dugout-actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: min(100%, 38rem); margin: 0 auto; }
-.dugout-header h2 { margin-bottom: 0; }.text-button { border: 0; background: transparent; color: #0d6261; cursor: pointer; font: inherit; font-weight: 700; }
-.dugout-tabs, .dugout-controls { display: flex; gap: 0.5rem; width: min(100%, 38rem); margin: 1rem auto; overflow-x: auto; }.dugout-tabs button, .dugout-controls button { flex: 1 0 auto; padding: 0.65rem 0.75rem; border: 1px solid #9caaa6; border-radius: 0.4rem; background: #fff; color: #1e2528; font: inherit; cursor: pointer; }.dugout-tabs [aria-selected="true"], .dugout-controls .is-selected { background: #0d6261; border-color: #0d6261; color: #fff; }
+.dugout-header h2 { margin-bottom: 0; }.text-button { min-height: 2.75rem; padding: .5rem .25rem; border: 0; background: transparent; color: #0d6261; cursor: pointer; font: inherit; font-weight: 700; }
+.dugout-tabs, .dugout-controls { display: flex; gap: 0.5rem; width: min(100%, 38rem); margin: 1rem auto; overflow-x: auto; }.dugout-tabs button, .dugout-controls button { flex: 1 0 auto; min-height: 2.75rem; padding: 0.65rem 0.75rem; border: 1px solid #9caaa6; border-radius: 0.4rem; background: #fff; color: #1e2528; font: inherit; cursor: pointer; }.dugout-tabs [aria-selected="true"], .dugout-controls .is-selected { background: #0d6261; border-color: #0d6261; color: #fff; }
 .dugout-pitch { position: relative; width: min(100%, 38rem); aspect-ratio: 1 / 1.45; margin: 0 auto; overflow: hidden; border-radius: 0.7rem; background: #396e5d; }.dugout-pitch-lines { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: #eef5ed; stroke-width: 0.55; pointer-events: none; }
 .slot-marker { position: absolute; width: 2.8rem; height: 2.8rem; transform: translate(-50%, -50%); border: 2px dashed rgba(255,255,255,.72); border-radius: 50%; pointer-events: none; }.fitness-primary { border-color: #d8f0a4; }.fitness-playable { border-color: #ffd36f; }.fitness-poor { border-color: #f49b87; }
 .player-token { position: absolute; z-index: 1; display: grid; width: 3.6rem; min-height: 3.6rem; transform: translate(-50%, -50%); place-content: center; border: 2px solid #f7f9f4; border-radius: 50%; background: #173c37; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.24); cursor: grab; font: inherit; font-size: .62rem; line-height: 1.15; transition: top .34s ease, left .34s ease; }.player-token.is-dragging { opacity: .72; cursor: grabbing; transition: none; }.player-token small { color: #d8f0a4; font-size: .55rem; }
 .fitness-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; width: min(100%, 38rem); margin: .7rem auto; font-size: .78rem; }.fitness-legend i { width: .75rem; height: .75rem; border: 2px solid; border-radius: 50%; }
 .bench { width: min(100%, 38rem); margin: 0 auto; }.bench > p { margin-bottom: .5rem; font-size: .88rem; font-weight: 700; }.bench-scroll { display: flex; gap: .6rem; overflow-x: auto; padding-bottom: .35rem; }.bench-card { display: grid; flex: 0 0 6rem; min-height: 4.1rem; padding: .55rem; border: 1px solid #9caaa6; border-radius: .45rem; background: #fff; color: #1e2528; cursor: grab; font: inherit; text-align: left; }.bench-card small { color: #62706d; margin-top: .25rem; }
-.directive-controls { display: grid; gap: .85rem; width: min(100%, 38rem); margin: 1rem auto; }.directive-controls label { display: grid; gap: .28rem; }.directive-controls label span { display: flex; justify-content: space-between; }.directive-controls small { display: flex; justify-content: space-between; color: #62706d; }.directive-controls em { font-style: normal; }.directive-controls input { width: 100%; }
+.directive-controls { display: grid; gap: .85rem; width: min(100%, 38rem); margin: 1rem auto; }.directive-controls label { display: grid; gap: .28rem; }.directive-controls label span { display: flex; justify-content: space-between; }.directive-controls small { display: flex; justify-content: space-between; color: #62706d; }.directive-controls em { font-style: normal; }.directive-controls input[type="range"] { width: 100%; min-height: 2.75rem; }
 .dugout-notice { width: min(100%, 38rem); margin: 1rem auto; padding: .7rem .85rem; border-left: 3px solid #0d6261; background: #e5efed; line-height: 1.5; }.dugout-actions { padding: 1rem 0 2rem; }.dugout-actions .button-link { margin: 0; border: 0; cursor: pointer; font: inherit; }
 .event-feed { margin: 0; padding-left: 1.3rem; line-height: 1.7; }.event-feed li + li { margin-top: .35rem; }.grade-result { display: inline-block; margin: 1rem 0 0; padding: .45rem .7rem; border-radius: .35rem; background: #0d6261; color: #fff; font-weight: 750; }.result-headline { margin-top: 1rem; font-weight: 700; }
 
 
 /* --- 경기 진행 재생 (D3) --- */
-.match-stage { position: relative; }
-.match-clock { display: flex; align-items: baseline; gap: .6rem; margin: .9rem 0 0; }
-.match-clock b { font-size: 1.6rem; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
-.match-clock span { color: #62706d; font-size: .86rem; }
-.transport { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .8rem; }
-.transport-main { min-width: 6.5rem; min-height: 2.75rem; padding: .6rem 1rem; border: 0; border-radius: .4rem; background: #0d6261; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
-.transport-main:disabled, .intervention-button:disabled { background: #aab3b0; color: #46504e; cursor: not-allowed; }
-.transport .text-button:disabled { color: #8a938f; cursor: not-allowed; }
-.speed-group { display: flex; gap: .25rem; }
-.speed-group button { min-width: 3.2rem; min-height: 2.75rem; padding: .5rem .55rem; border: 1px solid #9caaa6; border-radius: .35rem; background: #fff; color: #1e2528; font: inherit; font-size: .84rem; cursor: pointer; }
-.speed-group .is-selected { background: #173c37; border-color: #173c37; color: #fff; }
 .match-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; overflow-wrap: anywhere; }
 .match-code-line { margin-top: .8rem; color: #50605c; }
 .best-grade { margin: .7rem 0 0; color: #50605c; }
-.beat-overlay, .kickoff-overlay { position: absolute; inset: auto 0 0; display: grid; gap: .3rem; padding: 1rem 1.1rem; background: rgba(23,60,55,.94); color: #fff; border-radius: 0 0 .5rem .5rem; }
+.beat-overlay { position: absolute; inset: auto 0 0; display: grid; gap: .3rem; padding: 1rem 1.1rem; background: rgba(23,60,55,.94); color: #fff; border-radius: 0 0 .5rem .5rem; }.kickoff-overlay { position: absolute; inset: auto 0 0; display: grid; align-content: end; gap: .3rem; padding: 2.2rem 1.1rem 1rem; background: linear-gradient(to bottom, rgba(23,60,55,0), rgba(23,60,55,.93) 22%); color: #fff; border-radius: 0 0 .5rem .5rem; }
 .beat-overlay strong { font-size: 1.3rem; letter-spacing: -.03em; }
 .beat-overlay span, .kickoff-overlay span { font-size: .88rem; line-height: 1.5; color: #d7e5e0; }
 .beat-overlay.is-goal { background: rgba(13,98,97,.96); }
 .beat-overlay.is-concede { background: rgba(122,52,40,.96); }
 .beat-overlay.is-counter { background: rgba(74,64,30,.96); }
 .beat-overlay.is-final { background: rgba(30,37,40,.96); }
-.kickoff-overlay { inset: 0; align-content: center; border-radius: .5rem; }
-.kickoff-overlay .eyebrow { color: #d8f0a4; margin-bottom: .2rem; }
-.kickoff-overlay strong { font-size: 1.15rem; line-height: 1.5; }
-.scoreboard.is-goal { background: #0d6261; }
-.scoreboard.is-concede { background: #7a3428; }
+.kickoff-overlay .eyebrow { color: #d8f0a4; margin-bottom: .2rem; }.kickoff-overlay strong { font-size: 1.02rem; line-height: 1.5; }
 .feed-empty { color: #62706d; }
 .event-feed b { display: inline-block; min-width: 3.4rem; color: #0d6261; font-variant-numeric: tabular-nums; }
 .event-feed li.feed-goal { font-weight: 700; }
@@ -109,7 +86,6 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
 .record-date { color: #62706d; }
 
 @media (max-width: 640px) {
-  .transport-main, .speed-group button { flex: 1 0 auto; }
   .record-row { grid-template-columns: 2.2rem minmax(0, 1fr); }
   .record-links { grid-column: 1 / -1; justify-items: start; grid-auto-flow: column; gap: .9rem; }
 }
@@ -121,7 +97,7 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
 
 /* 상세 수치 접기. 경기 화면이 문서로 읽히지 않게 표를 한 단계 뒤로 보낸다. */
 .match-detail-fold { margin-top: 1.25rem; border-top: 1px solid #cbd1cd; padding-top: .75rem; }
-.match-detail-fold > summary { cursor: pointer; padding: .55rem 0; color: #0d6261; font-weight: 700; list-style: none; }
+.match-detail-fold > summary { display: flex; align-items: center; min-height: 2.75rem; cursor: pointer; padding: .55rem .25rem; color: #0d6261; font-weight: 700; list-style: none; }
 .match-detail-fold > summary::-webkit-details-marker { display: none; }
 .match-detail-fold > summary::before { content: "+ "; }
 .match-detail-fold[open] > summary::before { content: "- "; }
@@ -131,8 +107,6 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
   킥오프 안내가 피치를 통째로 덮으면 첫 화면에서 이게 축구 게임이라는 사실 자체가 사라진다.
   플레이테스트 3바퀴에서 사용자가 경기를 한 번도 보지 못한 직접 원인이라 하단 배너로 내린다.
 */
-.kickoff-overlay { inset: auto 0 0; align-content: end; border-radius: 0 0 .5rem .5rem; background: linear-gradient(to bottom, rgba(23,60,55,0), rgba(23,60,55,.93) 22%); padding-top: 2.2rem; }
-.kickoff-overlay strong { font-size: 1.02rem; }
 
 @media (max-width: 640px) {
   /* 좁은 화면에서는 배너조차 피치를 다 가린다. 겹치지 말고 아래로 내려 둘 다 보이게 한다. */

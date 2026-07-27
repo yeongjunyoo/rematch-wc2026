@@ -8,10 +8,12 @@
  *   node scripts/smoke.mjs            빌드된 dist를 미리보기로 띄워 검사
  *   node scripts/smoke.mjs --shots    검사와 함께 화면 갈무리 저장
  */
-import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import process from "node:process";
+
+import { baseUrlFor, findHeadlessShell, startPreview, waitFor } from "./lib/cdp.mjs";
 
 /**
  * REMATCH_BASE를 주면 그 주소를 그대로 검사한다(배포된 production 검증).
@@ -19,7 +21,7 @@ import process from "node:process";
  */
 const REMOTE = process.env.REMATCH_BASE;
 const PORT = 4178;
-const BASE = REMOTE === undefined ? `http://127.0.0.1:${PORT}/` : REMOTE.replace(/\/*$/, "/");
+const BASE = baseUrlFor(PORT, REMOTE);
 const SHOT_DIR = resolve("artifacts/smoke");
 const WANT_SHOTS = process.argv.includes("--shots");
 
@@ -45,16 +47,6 @@ const ROUTES = [
   { hash: "#/match/za-kor-2026/99", must: ["경로를 찾을 수 없습니다"] },
   { hash: "#/nonsense", must: ["경로를 찾을 수 없습니다"] },
 ];
-
-function findHeadlessShell() {
-  const root = join(process.env.LOCALAPPDATA ?? "", "ms-playwright");
-  if (!existsSync(root)) throw new Error("ms-playwright 캐시를 찾을 수 없습니다.");
-  const pack = readdirSync(root).filter((entry) => entry.startsWith("chromium_headless_shell-")).sort().pop();
-  if (pack === undefined) throw new Error("chromium headless shell이 설치되어 있지 않습니다.");
-  const binary = join(root, pack, "chrome-headless-shell-win64", "chrome-headless-shell.exe");
-  if (!existsSync(binary)) throw new Error(`실행 파일이 없습니다: ${binary}`);
-  return binary;
-}
 
 function dumpDom(binary, url, size) {
   return execFileSync(binary, [
@@ -82,30 +74,13 @@ function screenshot(binary, url, size, file) {
   ], { stdio: "ignore" });
 }
 
-async function waitForServer(url, timeoutMs) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) return;
-    } catch {
-      // 아직 준비되지 않았다.
-    }
-    await new Promise((done) => setTimeout(done, 200));
-  }
-  throw new Error(`미리보기 서버가 ${timeoutMs}ms 안에 뜨지 않았습니다.`);
-}
-
 const binary = findHeadlessShell();
-// vite를 직접 자식으로 띄운다. 셸을 거치면 kill이 셸만 죽이고 서버가 포트를 붙든 채 남는다.
-const server = REMOTE === undefined
-  ? spawn(process.execPath, [resolve("node_modules/vite/bin/vite.js"), "preview", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { stdio: "ignore" })
-  : null;
+const server = startPreview(PORT, REMOTE);
 console.log(`검사 대상: ${BASE}`);
 let failures = 0;
 
 try {
-  await waitForServer(BASE, 20000);
+  await waitFor(async () => (await fetch(BASE)).ok, 20000, "미리보기 서버가 뜨지 않았습니다");
   if (WANT_SHOTS) {
     rmSync(SHOT_DIR, { recursive: true, force: true });
     mkdirSync(SHOT_DIR, { recursive: true });

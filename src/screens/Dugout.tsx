@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { PointerEvent } from "react";
+import type { KeyboardEvent, PointerEvent } from "react";
 import { applyPreset, clampDirectives, clampToPitch, fitness, FORMATION_SLOTS, snapToNearestSlot, substitute, swapPlacements } from "../domain/tactics";
 import type { FormationPreset, Intervention, Placement, TacticalDirectives } from "../domain/types";
 import { diffIntervention } from "../domain/rng";
@@ -19,6 +19,7 @@ interface DugoutProps {
 }
 
 const FORMATIONS: readonly FormationPreset[] = ["4-3-3", "4-2-3-1", "3-4-3", "3-5-2", "5-4-1"];
+type DugoutTab = "shape" | "directives";
 const DIRECTIVES: readonly { readonly key: keyof TacticalDirectives; readonly label: string; readonly low: string; readonly high: string }[] = [
   { key: "defensiveLine", label: "수비 라인", low: "낮게", high: "높게" },
   { key: "pressing", label: "압박 강도", low: "소극", high: "전방 압박" },
@@ -38,10 +39,14 @@ export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initi
   const [directives, setDirectives] = useState(initialDirectives);
   const [cardsUsed, setCardsUsed] = useState(0);
   const [substitutions, setSubstitutions] = useState<readonly { readonly outId: string; readonly inId: string }[]>([]);
-  const [tab, setTab] = useState<"shape" | "directives">("shape");
+  const [tab, setTab] = useState<DugoutTab>("shape");
   // 벤치에서 고른 선수. 탭 두 번으로 교체하는 경로의 중간 상태다.
   const [selectedBenchId, setSelectedBenchId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const pitchRef = useRef<HTMLDivElement>(null);
   // 드래그가 끝나면 브라우저가 click을 한 번 더 쏜다. 그걸 탭으로 오인하면 교체가 두 번 일어난다.
   const suppressClick = useRef(false);
@@ -49,6 +54,43 @@ export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initi
   const players = useMemo(() => new Map([...squad.starters, ...squad.bench].map((player) => [player.id, player])), [squad]);
   const activePlayerId = drag.state.itemId?.replace("bench:", "") ?? null;
   const activePlayer = activePlayerId === null ? undefined : players.get(activePlayerId);
+
+  useEffect(() => {
+    previouslyFocusedRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeButtonRef.current?.focus();
+    return () => { previouslyFocusedRef.current?.focus(); };
+  }, []);
+
+  const handleDialogKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])');
+    if (focusable === undefined || focusable.length === 0) {
+      event.preventDefault();
+      dialogRef.current?.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (first === undefined || last === undefined) return;
+    if (event.shiftKey ? document.activeElement === first : document.activeElement === last) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    }
+  };
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, currentTab: DugoutTab) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const nextIndex = currentTab === "shape" ? 1 : 0;
+    const nextTab: DugoutTab = nextIndex === 0 ? "shape" : "directives";
+    setTab(nextTab);
+    tabRefs.current[nextIndex]?.focus();
+  };
 
   useEffect(() => {
     setFormation(initialFormation);
@@ -166,9 +208,9 @@ export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initi
   };
 
   return (
-    <section className="dugout-overlay" role="dialog" aria-modal="true" aria-label="더그아웃 전술 편집" onPointerDown={startDrag} onPointerMove={drag.onPointerMove} onPointerUp={finishDrag} onPointerCancel={drag.onPointerCancel} onLostPointerCapture={drag.onLostPointerCapture}>
-      <header className="dugout-header"><div><p className="eyebrow">더그아웃, {minute}분</p><h2>개입 {tokenIndex + 1}</h2></div><button type="button" className="text-button" onClick={onClose}>닫기</button></header>
-      <div className="dugout-tabs" role="tablist"><button type="button" role="tab" aria-selected={tab === "shape"} onClick={() => setTab("shape")}>포메이션</button><button type="button" role="tab" aria-selected={tab === "directives"} onClick={() => setTab("directives")}>팀 지시</button></div>
+    <section ref={dialogRef} className="dugout-overlay" role="dialog" aria-modal="true" tabIndex={-1} aria-label="더그아웃 전술 편집" onKeyDown={handleDialogKeyDown} onPointerDown={startDrag} onPointerMove={drag.onPointerMove} onPointerUp={finishDrag} onPointerCancel={drag.onPointerCancel} onLostPointerCapture={drag.onLostPointerCapture}>
+      <header className="dugout-header"><div><p className="eyebrow">더그아웃, {minute}분</p><h2>개입 {tokenIndex + 1}</h2></div><button ref={closeButtonRef} type="button" className="text-button" onClick={onClose}>닫기</button></header>
+      <div className="dugout-tabs" role="tablist"><button ref={(element) => { tabRefs.current[0] = element; }} id="dugout-tab-shape" type="button" role="tab" aria-selected={tab === "shape"} aria-controls="dugout-panel-shape" tabIndex={tab === "shape" ? 0 : -1} onClick={() => setTab("shape")} onKeyDown={(event) => handleTabKeyDown(event, "shape")}>포메이션</button><button ref={(element) => { tabRefs.current[1] = element; }} id="dugout-tab-directives" type="button" role="tab" aria-selected={tab === "directives"} aria-controls="dugout-panel-directives" tabIndex={tab === "directives" ? 0 : -1} onClick={() => setTab("directives")} onKeyDown={(event) => handleTabKeyDown(event, "directives")}>팀 지시</button></div>
       <div ref={pitchRef} className="dugout-pitch">
         <PitchLines />
         {FORMATION_SLOTS[formation].map((slot, index) => {
@@ -225,7 +267,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initi
           {player.label}<small>{player.position}{player.confirmed ? "" : " 재구성"}</small>
         </button>
       ))}</div></section>
-      {tab === "shape" ? <section className="dugout-controls" aria-label="포메이션 프리셋">{FORMATIONS.map((preset) => <button key={preset} type="button" className={formation === preset ? "is-selected" : ""} onClick={() => chooseFormation(preset)}>{preset}</button>)}</section> : <section className="directive-controls" aria-label="팀 지시">{DIRECTIVES.map(({ key, label, low, high }) => <label key={key}><span>{label}<b>{directives[key]}</b></span><small>{low} <em>{high}</em></small><input type="range" min="-2" max="2" step="1" value={directives[key]} onChange={(event) => setDirectives((current) => ({ ...current, [key]: Number(event.target.value) }))} /></label>)}</section>}
+      {tab === "shape" ? <section id="dugout-panel-shape" className="dugout-controls" role="tabpanel" aria-labelledby="dugout-tab-shape" tabIndex={0} aria-label="포메이션 프리셋">{FORMATIONS.map((preset) => <button key={preset} type="button" className={formation === preset ? "is-selected" : ""} onClick={() => chooseFormation(preset)}>{preset}</button>)}</section> : <section id="dugout-panel-directives" className="directive-controls" role="tabpanel" aria-labelledby="dugout-tab-directives" tabIndex={0} aria-label="팀 지시">{DIRECTIVES.map(({ key, label, low, high }) => <label key={key}><span>{label}<b>{directives[key]}</b></span><small>{low} <em>{high}</em></small><input type="range" min="-2" max="2" step="1" value={directives[key]} onChange={(event) => setDirectives((current) => ({ ...current, [key]: Number(event.target.value) }))} /></label>)}</section>}
       {notice === null ? null : <p className="dugout-notice" role="status">{notice}</p>}
       <footer className="dugout-actions"><button type="button" className="text-button" onClick={onClose}>취소</button><button type="button" className="button-link" onClick={confirm}>개입 확정</button></footer>
     </section>
