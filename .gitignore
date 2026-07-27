@@ -10,3 +10,7 @@ preview.log
 probe-*.txt
 leader-audit.txt
 artifacts/
+.scratch/
+
+.vercel
+.env*

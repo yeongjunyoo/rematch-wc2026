@@ -13,8 +13,13 @@ import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import process from "node:process";
 
+/**
+ * REMATCH_BASE를 주면 그 주소를 그대로 검사한다(배포된 production 검증).
+ * 주지 않으면 로컬 dist를 미리보기로 띄워 검사한다.
+ */
+const REMOTE = process.env.REMATCH_BASE;
 const PORT = 4178;
-const BASE = `http://127.0.0.1:${PORT}/`;
+const BASE = REMOTE === undefined ? `http://127.0.0.1:${PORT}/` : REMOTE.replace(/\/*$/, "/");
 const SHOT_DIR = resolve("artifacts/smoke");
 const WANT_SHOTS = process.argv.includes("--shots");
 
@@ -93,7 +98,10 @@ async function waitForServer(url, timeoutMs) {
 
 const binary = findHeadlessShell();
 // vite를 직접 자식으로 띄운다. 셸을 거치면 kill이 셸만 죽이고 서버가 포트를 붙든 채 남는다.
-const server = spawn(process.execPath, [resolve("node_modules/vite/bin/vite.js"), "preview", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { stdio: "ignore" });
+const server = REMOTE === undefined
+  ? spawn(process.execPath, [resolve("node_modules/vite/bin/vite.js"), "preview", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { stdio: "ignore" })
+  : null;
+console.log(`검사 대상: ${BASE}`);
 let failures = 0;
 
 try {
@@ -125,7 +133,7 @@ try {
     }
   }
 } finally {
-  server.kill();
+  server?.kill();
 }
 
 if (failures > 0) {

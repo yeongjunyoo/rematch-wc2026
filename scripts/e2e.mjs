@@ -15,9 +15,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import process from "node:process";
 
+/** REMATCH_BASE를 주면 배포된 주소를 그대로 검사한다. 주지 않으면 로컬 dist를 띄운다. */
+const REMOTE = process.env.REMATCH_BASE;
 const PREVIEW_PORT = 4179;
 const CDP_PORT = 9333;
-const BASE = `http://127.0.0.1:${PREVIEW_PORT}/`;
+const BASE = REMOTE === undefined ? `http://127.0.0.1:${PREVIEW_PORT}/` : REMOTE.replace(/\/*$/, "/");
 
 function findHeadlessShell() {
   const root = join(process.env.LOCALAPPDATA ?? "", "ms-playwright");
@@ -119,7 +121,10 @@ function check(label, condition, detail = "") {
 
 const binary = findHeadlessShell();
 const profile = mkdtempSync(join(tmpdir(), "rematch-e2e-"));
-const server = spawn(process.execPath, [resolve("node_modules/vite/bin/vite.js"), "preview", "--host", "127.0.0.1", "--port", String(PREVIEW_PORT), "--strictPort"], { stdio: "ignore" });
+const server = REMOTE === undefined
+  ? spawn(process.execPath, [resolve("node_modules/vite/bin/vite.js"), "preview", "--host", "127.0.0.1", "--port", String(PREVIEW_PORT), "--strictPort"], { stdio: "ignore" })
+  : null;
+console.log(`검사 대상: ${BASE}`);
 const browser = spawn(binary, [
   "--headless",
   "--disable-gpu",
@@ -203,7 +208,7 @@ try {
 } finally {
   page?.close();
   browser.kill();
-  server.kill();
+  server?.kill();
   try { execFileSync("taskkill", ["/pid", String(browser.pid), "/T", "/F"], { stdio: "ignore" }); } catch { /* 이미 종료됨 */ }
   rmSync(profile, { recursive: true, force: true });
 }
