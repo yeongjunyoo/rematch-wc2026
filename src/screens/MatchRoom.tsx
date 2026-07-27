@@ -234,6 +234,10 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
             const pitchNames = placements
               .map((placement) => [...roster.starters, ...roster.bench].find((player) => player.id === placement.playerId)?.label)
               .filter((label): label is string => label !== undefined);
+            // 교체 확인이 떠 있으면 그때 누를 수 있는 것은 그 둘뿐이다.
+            if (document.querySelector(".dg-substitution-confirmation") !== null) {
+              return ["이 교체 적용", "교체 취소"];
+            }
             return ["포메이션", "팀 지시", "개입 확정", "취소", "닫기", ...benchNames, ...pitchNames];
           }
           if (decisionPrompt) return [...(promptQuickSub === null ? [] : [`${promptQuickSub.incoming} 투입`]), "전술 직접 바꾸기", "이대로 본다"];
