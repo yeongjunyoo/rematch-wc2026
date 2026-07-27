@@ -1,5 +1,6 @@
 import { NEUTRAL_DIRECTIVES } from "../domain/types";
 import type { FormationPreset, Intervention, MatchEvent, Placement, ScenarioDeclaration, TacticalDirectives, TerminalFacts } from "../domain/types";
+import { directiveWeights } from "../domain/ratings";
 import { defaultFormation, initialPlacements, squadFor } from "./squad";
 
 export interface DecisionSummary {
@@ -18,7 +19,17 @@ export interface MatchTally {
   readonly substitutions: number;
 }
 
+/** 마지막으로 확정한 전술이 계수상 무엇을 바꾸도록 되어 있었는지. */
+export interface TacticEffect {
+  /** 우리 기회량 배수의 백분율 변화. 0이면 중립과 같다. */
+  readonly chanceShift: number;
+  /** 상대에게 내주는 위험 배수의 백분율 변화. */
+  readonly exposureShift: number;
+  readonly summary: string;
+}
+
 export interface ReportInsight {
+  readonly tacticEffect: TacticEffect | null;
   readonly decisions: readonly DecisionSummary[];
   readonly tally: MatchTally;
   readonly why: string;
@@ -145,6 +156,25 @@ function nextTryFor(scenario: ScenarioDeclaration, interventions: readonly Inter
   return "다음 시도 번호에서 같은 전술을 다시 시험해 보세요.";
 }
 
+/**
+ * 전술 설정과 실제 관측을 나란히 둔다.
+ * 인과를 단정하지 않는다. 계수는 시뮬레이션이 실제로 쓴 값이고 사건 수는 실제로 일어난 것이며,
+ * 둘을 붙여 보여주는 것까지가 사실이다. 그 사이의 해석은 사용자 몫이다.
+ */
+function tacticEffectFor(interventions: readonly Intervention[], tally: MatchTally): TacticEffect | null {
+  const latest = [...interventions].sort((left, right) => left.tokenIndex - right.tokenIndex).pop();
+  if (latest === undefined) return null;
+  const weights = directiveWeights(latest.directives);
+  const chanceShift = Math.round((weights.userChance - 1) * 100);
+  const exposureShift = Math.round((weights.concede - 1) * 100);
+  const move = (value: number) => value === 0 ? "그대로" : value > 0 ? `${value}퍼센트 높게` : `${Math.abs(value)}퍼센트 낮게`;
+  return {
+    chanceShift,
+    exposureShift,
+    summary: `마지막에 확정한 지시는 우리 기회를 ${move(chanceShift)}, 상대에게 내주는 위험을 ${move(exposureShift)} 설정한 것이었습니다. 그 아래에서 실제로 우리 기회는 ${tally.userChances}번, 상대 기회는 ${tally.opponentChances}번 기록됐습니다.`,
+  };
+}
+
 export function buildReportInsight(input: {
   readonly scenario: ScenarioDeclaration;
   readonly terminal: TerminalFacts;
@@ -165,6 +195,7 @@ export function buildReportInsight(input: {
   }
   const tally = tallyFor(input.timeline);
   return {
+    tacticEffect: tacticEffectFor(input.interventions, tally),
     decisions,
     tally,
     why: whyFor(input.terminal, tally, decisions.length > 0),

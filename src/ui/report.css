@@ -92,3 +92,6 @@
 
 /* 집계 범위 고지. 이어받은 뒤만 센다는 사실이 없으면 최종 스코어와 모순으로 읽힌다. */
 .rp-tally-scope { margin: .1rem 0 .8rem; color: #62706d; font-size: .86rem; line-height: 1.5; }
+
+/* 설정한 전술과 실제 관측을 나란히. 사용자가 결과를 자기 결정과 이을 수 있는 유일한 사실 대조다. */
+.rp-tactic-effect { margin: .5rem 0 .9rem; padding: .7rem .85rem; border-left: 3px solid #0d6261; background: #eef6f4; line-height: 1.6; }

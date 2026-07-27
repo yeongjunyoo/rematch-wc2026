@@ -147,6 +147,9 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
           <section className="report-section">
             <h2>왜 이렇게 끝났나</h2>
             <p className="rp-why">{(insight ?? tallyOnly)?.why}</p>
+            {insight?.tacticEffect === null || insight?.tacticEffect === undefined ? null : (
+              <p className="rp-tactic-effect">{insight.tacticEffect.summary}</p>
+            )}
             {/*
               이 집계는 이어받은 시점 이후에 일어난 것만 센다. 그 사실을 밝히지 않으면
               최종 스코어 0대1 옆에 상대 득점 0골이 나란히 서서 사용자가 모순으로 읽는다.
