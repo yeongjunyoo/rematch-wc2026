@@ -78,6 +78,9 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
   const [beat, setBeat] = useState<Beat | null>(null);
   // 피치 강조는 연출 배너와 수명이 다르다. 배너는 멈춰 세우고, 강조는 흐름을 끊지 않는다.
   const [emphasis, setEmphasis] = useState<LivePitchProps["emphasis"]>("none");
+  // 개입을 한 번도 하지 않은 채 경기가 흘러갈 때 한 번만 멈춰 세운다. 두 번 이상 막으면 방해가 된다.
+  const [decisionPrompt, setDecisionPrompt] = useState(false);
+  const promptedOnce = useRef(false);
   const [formation, setFormation] = useState<FormationPreset>(() => defaultFormation(scenarioId));
   const [placements, setPlacements] = useState<readonly Placement[]>(() => scenario === undefined ? [] : initialPlacements(scenarioId));
   const [directives, setDirectives] = useState<TacticalDirectives>(NEUTRAL_DIRECTIVES);
@@ -99,6 +102,8 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
     setSpeed(1);
     setBeat(null);
     setEmphasis("none");
+    setDecisionPrompt(false);
+    promptedOnce.current = false;
     setFormation(defaultFormation(scenario.id));
     setPlacements(initialPlacements(scenario.id));
     setDirectives(NEUTRAL_DIRECTIVES);
@@ -119,13 +124,13 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
 
   // 경기 시계. 더그아웃이 열려 있거나 연출이 진행 중이면 시간은 흐르지 않는다.
   useEffect(() => {
-    if (runtime === null || finished || !playing || isDugoutOpen || beat !== null) return undefined;
+    if (runtime === null || finished || !playing || isDugoutOpen || beat !== null || decisionPrompt) return undefined;
     const interval = window.setInterval(
       () => setRuntime((current) => current === null || isFinished(current) ? current : tickRuntime(current)),
       Math.round(TICK_BASE_MS / speed),
     );
     return () => window.clearInterval(interval);
-  }, [beat, finished, isDugoutOpen, playing, runtime === null, speed]);
+  }, [beat, decisionPrompt, finished, isDugoutOpen, playing, runtime === null, speed]);
 
   // 새로 생긴 사건 중 멈춰 세울 것을 고른다.
   useEffect(() => {
@@ -154,6 +159,18 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
     }, BEAT_HOLD_MS);
     return () => window.clearTimeout(timer);
   }, [beat]);
+
+  // 개입 없이 다섯 분이 지나면 한 번 멈춰 세운다. 사용자가 화면을 탐색하지 않아도
+  // 이 게임의 핵심 행동을 만나게 하는 유일한 경로다.
+  useEffect(() => {
+    if (runtime === null || scenario === undefined || finished || promptedOnce.current) return;
+    if (runtime.interventions.length > 0) { promptedOnce.current = true; return; }
+    const elapsed = runtime.state.clock.absoluteMinute - scenario.interventionStartMinute;
+    if (elapsed < 5) return;
+    promptedOnce.current = true;
+    setPlaying(false);
+    setDecisionPrompt(true);
+  }, [finished, runtime, scenario]);
 
   // 강조는 스스로 꺼진다. 계속 켜져 있으면 그건 강조가 아니라 배경이다.
   useEffect(() => {
@@ -203,6 +220,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
           // 더그아웃이 열려 있으면 뒤 화면 조작은 눌리지 않는다. 스냅샷이 그것들을 계속 발행하면
           // 에이전트는 사람이 못 누르는 것을 누르려 하고, 사람이 누를 수 있는 것은 보지 못한다.
           if (isDugoutOpen) return ["포메이션", "팀 지시", "개입 확정", "취소", "닫기"];
+          if (decisionPrompt) return ["전술 바꾸기", "이대로 본다"];
           if (isFinished(runtime)) return ["결과 리포트 보기", "새 리매치 시작", "홈으로 돌아가기"];
           const notStarted = runtime.state.clock.absoluteMinute === scenario.interventionStartMinute && runtime.state.events.length === 0;
           if (notStarted) return ["전술 바꾸기", "경기 재개", "끝까지 건너뛰기", "홈으로 돌아가기"];
@@ -258,6 +276,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
     }
     setPlaying(false);
     setNotice(null);
+    setDecisionPrompt(false);
     setDugoutOpen(true);
   };
 
@@ -328,6 +347,17 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
             <span>{beat.detail}</span>
           </div>
         )}
+        {decisionPrompt && !finished ? (
+          <div className="kickoff-overlay decision-prompt">
+            <p className="eyebrow">{runtime.state.clock.absoluteMinute}분, 아직 아무것도 바꾸지 않았습니다</p>
+            <strong>이대로 두면 역사가 그대로 반복됩니다.</strong>
+            <div className="kickoff-actions">
+              <button type="button" className="kickoff-primary" onClick={openDugout}>전술 바꾸기</button>
+              <button type="button" className="kickoff-secondary" onClick={() => { setDecisionPrompt(false); setPlaying(true); }}>이대로 본다</button>
+            </div>
+            <span>{scenario.mission.brief}</span>
+          </div>
+        ) : null}
         {!started && !finished ? (
           <div className="kickoff-overlay">
             <p className="eyebrow">{scenario.interventionStartMinute}분, 당신이 벤치를 이어받았습니다</p>

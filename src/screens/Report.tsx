@@ -106,7 +106,7 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
     <main className="page">
       <header className="screen-header">
         <p className="eyebrow">결과 리포트, {attemptIndex + 1}번째 시도</p>
-        <h1>{scenario.displayTitle}</h1>
+        <h1>{scenario.userTeam.displayName} 대 {scenario.opponentTeam.displayName}</h1>
       </header>
 
       {mine === null ? (
