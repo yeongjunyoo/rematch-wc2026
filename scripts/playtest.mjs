@@ -173,11 +173,15 @@ async function applyAction(page, action) {
     case "wait":
       await sleep(Math.min(6000, Math.max(200, action.value ?? 1200)));
       return { ok: true, note: `wait ${action.value ?? 1200}ms` };
-    case "formation":
+    case "formation": {
+      await page.evaluate(`(() => {
+        const shape = [...document.querySelectorAll(".dugout-tabs button")].find((b) => b.innerText.includes("포메이션"));
+        if (shape) shape.click();
+        return true;
+      })()`);
+      await sleep(220);
       return {
         ok: await page.evaluate(`(() => {
-          const shape = [...document.querySelectorAll(".dugout-tabs button")].find((b) => b.innerText.includes("포메이션"));
-          if (shape) shape.click();
           const target = [...document.querySelectorAll(".dugout-controls button")].find((b) => b.innerText.trim() === ${JSON.stringify(action.label ?? "")});
           if (!target) return false;
           target.click();
@@ -185,11 +189,19 @@ async function applyAction(page, action) {
         })()`),
         note: `formation ${action.label}`,
       };
-    case "directive":
+    }
+    case "directive": {
+      // 탭을 누른 뒤 같은 동기 실행에서 슬라이더를 찾으면 아직 React가 그리기 전이라 없다.
+      // 그래서 첫 조작만 실패하고 두 번째부터 성공했고, 두 페르소나가 나란히
+      // "지시가 한 번 안 먹혔는데 내가 잘못 누른 건지 알 수 없었다"고 답했다.
+      await page.evaluate(`(() => {
+        const tab = [...document.querySelectorAll(".dugout-tabs button")].find((b) => b.innerText.includes("지시"));
+        if (tab) tab.click();
+        return true;
+      })()`);
+      await sleep(220);
       return {
         ok: await page.evaluate(`(() => {
-          const tab = [...document.querySelectorAll(".dugout-tabs button")].find((b) => b.innerText.includes("지시"));
-          if (tab) tab.click();
           const labels = [...document.querySelectorAll(".directive-controls label")];
           const found = labels.find((l) => l.innerText.includes(${JSON.stringify(action.label ?? "")}));
           if (!found) return false;
@@ -202,6 +214,7 @@ async function applyAction(page, action) {
         })()`),
         note: `directive ${action.label}=${action.value}`,
       };
+    }
     case "confirm":
       return { ok: await page.clickText("개입 확정"), note: "confirm" };
     case "close":
@@ -252,6 +265,15 @@ async function playOnce(page, persona, round) {
     for (const action of decision.actions ?? []) {
       const applied = await applyAction(page, action);
       transcript.push(`[행동] ${applied.note} → ${applied.ok ? "됨" : "안 됨"}`);
+      cdpActions.push({
+        id: `${persona.id}-r${round}-t${turn}`,
+        type: action.kind,
+        timestamp: new Date().toISOString(),
+        selector: action.label ?? action.target ?? null,
+        expression: applied.note,
+        result: applied.ok,
+        persona: persona.id,
+      });
       if (applied.quit === true) { quit = true; break; }
       // 실패는 화면이 계획과 달라졌다는 신호다. 남은 계획을 그대로 밀면 실패가 연쇄되고
       // 그 연쇄가 제품 결함처럼 기록된다. 즉시 멈추고 다시 관측한다.
@@ -268,6 +290,8 @@ let browser = null;
 let page = null;
 mkdirSync(OUT_DIR, { recursive: true });
 const results = [];
+// 실제 브라우저 조작 기록. 사람이 읽는 산문 로그와 달리 기계가 검증할 수 있어야 한다.
+const cdpActions = [];
 
 try {
   await waitFor(async () => (await fetch(BASE)).ok, 20000, "미리보기 서버가 뜨지 않았습니다");
@@ -309,6 +333,16 @@ try {
 }
 
 writeFileSync(join(OUT_DIR, "results.json"), JSON.stringify({ base: BASE, at: stamp, results }, null, 2), "utf8");
+
+writeFileSync(join(OUT_DIR, "transcript.json"), JSON.stringify({
+  schemaVersion: 1,
+  kind: "gui-automation-transcript",
+  surface: "web",
+  tool: "chrome-devtools-protocol",
+  generatedAt: new Date().toISOString(),
+  base: BASE,
+  actions: cdpActions,
+}, null, 2), "utf8");
 
 const lines = [`# 자동 플레이테스트 ${stamp}`, ``, `대상: ${BASE}`, ``];
 const all = results.flatMap((entry) => entry.feedback.improvements.map((item) => ({ ...item, persona: entry.personaName })));
