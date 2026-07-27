@@ -247,7 +247,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
               data-drag-item={`bench:${player.id}`}
               onClick={() => handleTap(`bench:${player.id}`)}
               aria-pressed={selectedBenchId === player.id}
-              aria-label={`${player.label}, ${player.position}${player.confirmed ? ", 확인됨" : ", 재구성"}. 눌러서 넣을 선수로 고르기`}
+              aria-label={`${player.label}, ${player.position}${player.confirmed ? "" : ", 재구성"}. 눌러서 넣을 선수로 고르기`}
             >
               <span className="dg-bench-card__name">{player.label}</span>
               <small>{player.position}{player.confirmed ? "" : " 재구성"}</small>
