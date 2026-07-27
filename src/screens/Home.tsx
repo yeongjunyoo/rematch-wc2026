@@ -25,7 +25,7 @@ export function Home() {
   useAgentSnapshot({
     screen: "home",
     headline: "REMATCH, 손흥민이 벤치에 있던 그 밤을 당신이 다시 지휘한다. 월드컵의 결정적 순간에서 전술로 결과를 다시 쓰는 게임",
-    affordances: [...SCENARIO_AFFORDANCES, "도움말과 데이터 안내"],
+    affordances: [...SCENARIO_AFFORDANCES, "경기 기록 보기", "도움말과 데이터 안내"],
     detail: Object.fromEntries(SCENARIOS.map((scenario, index) => [
       `경기${index + 1}`,
       `${scenario.displayTitle}, 지휘 팀 ${scenario.userTeam.displayName}, 이어받는 시점 ${scenario.interventionStartMinute}분 ${scenario.startingUserGoals}대${scenario.startingOpponentGoals}, 미션 ${scenario.mission.brief}`,

@@ -253,6 +253,9 @@ async function playOnce(page, persona, round) {
       const applied = await applyAction(page, action);
       transcript.push(`[행동] ${applied.note} → ${applied.ok ? "됨" : "안 됨"}`);
       if (applied.quit === true) { quit = true; break; }
+      // 실패는 화면이 계획과 달라졌다는 신호다. 남은 계획을 그대로 밀면 실패가 연쇄되고
+      // 그 연쇄가 제품 결함처럼 기록된다. 즉시 멈추고 다시 관측한다.
+      if (!applied.ok) { transcript.push("[관측] 화면이 예상과 달라 다시 봅니다."); break; }
       await sleep(action.kind === "wait" ? 0 : 550);
     }
   }

@@ -199,7 +199,7 @@ export class Page {
 
   clickText(label) {
     return this.evaluate(`(() => {
-      const nodes = [...document.querySelectorAll("button, a")];
+      const nodes = [...document.querySelectorAll("button, a, summary")];
       const exact = nodes.find((node) => node.innerText.trim() === ${JSON.stringify(label)});
       const loose = nodes.find((node) => node.innerText.includes(${JSON.stringify(label)}));
       const target = exact ?? loose;
