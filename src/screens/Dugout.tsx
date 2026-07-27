@@ -280,6 +280,12 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
   const confirm = () => {
     // 벤치 선수만 고르고 뺄 선수를 안 고른 채 확정하면, 사용자는 교체했다고 믿지만 아무 일도 안 일어난다.
     // 자동 플레이테스트의 축구 팬이 정확히 이 상태로 경기를 끝까지 보고 배신감을 느꼈다.
+    if (pendingSubstitution !== null) {
+      const incoming = players.get(pendingSubstitution.inId)?.label ?? "선수";
+      const outgoing = players.get(pendingSubstitution.outId)?.label ?? "선수";
+      setNotice(`${outgoing} 대신 ${incoming}를 넣는 교체가 아직 확인 전입니다. 교체 확정을 누르거나 교체 취소로 되돌리세요.`);
+      return;
+    }
     if (selectedBenchId !== null) {
       setNotice(`${players.get(selectedBenchId)?.label ?? "선수"}를 넣을 자리를 아직 고르지 않았습니다. 피치에서 뺄 선수를 누르거나 다시 눌러 선택을 해제하세요.`);
       return;

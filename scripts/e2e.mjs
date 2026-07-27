@@ -76,6 +76,10 @@ try {
   check("미완성 교체 뒤 더그아웃이 열린 채 남는다", await page.evaluate(`document.querySelector(".dugout-overlay") !== null`));
   check("미완성 교체에 토큰이 소모되지 않는다", (await tokensLeft()) === tokensBeforeIncompleteSubstitution);
   check("피치 선수를 누르면 교체 확인이 뜬다", await page.clickText("오현규"));
+  // 확인을 기다리는 교체를 둔 채 개입을 확정하면 그 교체가 통째로 사라진다. 막아야 한다.
+  await page.clickText("개입 확정");
+  await waitFor(() => page.evaluate('(document.querySelector(".dugout-notice")?.innerText ?? "").includes("아직 확인 전입니다")'), 4000, "확인 전 교체를 둔 채 확정이 막히지 않았습니다");
+  check("확인 전 교체를 둔 채 확정이 막힌다", await page.evaluate('document.querySelector(".dugout-overlay") !== null'));
   // 교체 카드는 경기당 세 장뿐이라 실수로 쓰면 되돌릴 수 없다. 확인을 거쳐야 확정된다.
   await waitFor(() => page.evaluate('document.querySelector(".dg-substitution-confirmation") !== null'), 4000, "교체 확인이 뜨지 않았습니다");
   check("교체를 취소하면 카드가 그대로다", await page.clickText("교체 취소"));
