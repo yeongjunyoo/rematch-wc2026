@@ -14,7 +14,8 @@ type SimulationInput = { readonly scenario: ScenarioDeclaration; readonly world:
 type TeamProfile = { readonly formation: FormationPreset; readonly attack: number; readonly defense: number; readonly control: number; readonly stamina: number };
 
 export interface WorldTraceEntry { readonly namespace: string; readonly minute: number; readonly value: number }
-export interface ExpectedChanceEntry { readonly side: Side; readonly minute: number; readonly expected: number }
+/** `base`는 가뭄 보정 전 값이다. 개별 요인을 보정과 분리해 검증할 수 있어야 한다. */
+export interface ExpectedChanceEntry { readonly side: Side; readonly minute: number; readonly expected: number; readonly base: number }
 export interface SimulationTrace { readonly state: MatchState; readonly timeline: readonly MatchEvent[]; readonly worldTrace: readonly WorldTraceEntry[]; readonly expectedChanceTrace: readonly ExpectedChanceEntry[] }
 
 /**
@@ -176,6 +177,26 @@ function pickShooter(
   return placements[placements.length - 1]!.playerId;
 }
 
+/** 가뭄 보정이 최대로 걸리기까지의 분. 이보다 오래 기회가 없으면 문턱이 상한까지 오른다. */
+const DROUGHT_FULL_RELIEF_MINUTES = 12;
+
+/**
+ * 오래 기회가 없으면 다음 기회의 문턱을 올린다.
+ *
+ * provenance는 authored다. 실축 통계에서 유도한 값이 아니라, 사용자의 결정이 개입할
+ * 사건 자체가 사라지는 것을 막기 위한 의도된 보정이다. 상한을 두어 어떤 경우에도
+ * 기회가 확정되지 않게 하고, 전술로 만든 차이를 덮지 않도록 배수를 제한한다.
+ */
+function applyDroughtRelief(base: number, state: MatchState, scenario: ScenarioDeclaration): number {
+  const lastUserChance = [...state.events].reverse().find((event) => event.type === "chance" && event.side === "user");
+  const since = lastUserChance === undefined
+    ? state.clock.absoluteMinute - scenario.interventionStartMinute
+    : state.clock.absoluteMinute - lastUserChance.clock.absoluteMinute;
+  if (since <= 3) return base;
+  const relief = Math.min(1, (since - 3) / DROUGHT_FULL_RELIEF_MINUTES);
+  return Math.min(0.45, base * (1 + relief * 1.1));
+}
+
 function createChances(state: MatchState, scenario: ScenarioDeclaration, applied: readonly Intervention[], world: WorldBook): { state: MatchState; traced: readonly ExpectedChanceEntry[] } {
   const minute = state.clock.absoluteMinute;
   const user = userProfile(scenario, applied[applied.length - 1]);
@@ -185,8 +206,10 @@ function createChances(state: MatchState, scenario: ScenarioDeclaration, applied
   for (const side of ["user", "opponent"] as const) {
     const chanceDraw = world.draw(`chance:${side}`, minute);
     const conversionDraw = world.draw(`conversion:${side}`, minute);
-    const expected = chanceExpectation(side, next, scenario, user, opponent);
-    traced.push({ side, minute, expected });
+    const base = chanceExpectation(side, next, scenario, user, opponent);
+    // 사용자 쪽만 보정한다. 상대에게도 걸면 두 팀이 함께 늘어 아무것도 달라지지 않는다.
+    const expected = side === "user" ? applyDroughtRelief(base, next, scenario) : base;
+    traced.push({ side, minute, expected, base });
     if (chanceDraw >= expected) continue;
     const converted = conversionThreshold(side, next, user, opponent) > conversionDraw;
     // 슈터는 실제로 피치에 있는 선수여야 한다. 합성 식별자를 쓰면 화면이 득점자를

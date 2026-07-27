@@ -65,7 +65,7 @@ describe("상대 대형 선언", () => {
       { id: "za-kor-2026", score: [0, 1], decidedPhase: "regulation", userResult: "loss", eventCount: 10 },
       { id: "kor-cze-2026", score: [2, 2], decidedPhase: "regulation", userResult: "draw", eventCount: 10 },
       { id: "esp-arg-2026-final", score: [0, 2], decidedPhase: "extraTime", userResult: "loss", eventCount: 12 },
-      { id: "ger-par-2026-r32", score: [1, 2], decidedPhase: "regulation", userResult: "loss", eventCount: 11 },
+      { id: "ger-par-2026-r32", score: [2, 2], decidedPhase: "shootout", userResult: "loss", eventCount: 29 },
       { id: "kor-ita-2002", score: [1, 1], decidedPhase: "shootout", userResult: "win", eventCount: 17 },
     ]);
   });

@@ -97,7 +97,8 @@ describe("D3 simulation runner", () => {
 
   it("lowers expected chance rate as stamina drains", () => {
     const trace = simulateWithTrace(input(SCENARIOS[0]!, NEUTRAL_DIRECTIVES)).expectedChanceTrace.filter((entry) => entry.side === "user");
-    expect(trace[trace.length - 1]!.expected).toBeLessThan(trace[0]!.expected);
+    // 가뭄 보정이 섞이지 않은 base로 본다. 그러지 않으면 체력 효과가 아니라 보정을 측정하게 된다.
+    expect(trace[trace.length - 1]!.base).toBeLessThan(trace[0]!.base);
   });
 
   it("records a bounded AI counter only after its observation lag", () => {
