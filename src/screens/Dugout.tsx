@@ -378,11 +378,11 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
       {pendingSubstitution === null ? null : (
         <section ref={substitutionConfirmationRef} className="dg-substitution-confirmation" role="alertdialog" aria-labelledby="substitution-confirmation-title" aria-describedby="substitution-confirmation-description" tabIndex={-1}>
           <div className="dg-substitution-confirmation__panel">
-            <h3 id="substitution-confirmation-title">교체를 확인하세요</h3>
-            <p id="substitution-confirmation-description">{pendingOutgoing?.label ?? "선수"}을 빼고 {pendingIncoming?.label ?? "선수"}을 넣습니다. 교체 카드 1장을 사용하며 확정 후 {cardsRemaining - 1}장 남습니다.</p>
+            <h3 id="substitution-confirmation-title">이 교체를 적용할까요</h3>
+            <p id="substitution-confirmation-description">{pendingOutgoing?.label ?? "선수"}을 빼고 {pendingIncoming?.label ?? "선수"}을 넣습니다. 교체 카드 1장을 사용하며 {cardsRemaining - 1}장 남습니다. 적용해도 경기는 아직 재개되지 않고, 마지막에 개입 확정을 눌러야 반영됩니다.</p>
             <div className="dg-substitution-confirmation__actions">
               <button type="button" className="text-button" onClick={cancelPendingSubstitution}>교체 취소</button>
-              <button ref={substitutionConfirmButtonRef} type="button" className="button-link" onClick={confirmPendingSubstitution}>교체 확정</button>
+              <button ref={substitutionConfirmButtonRef} type="button" className="button-link" onClick={confirmPendingSubstitution}>이 교체 적용</button>
             </div>
           </div>
         </section>

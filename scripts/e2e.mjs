@@ -88,7 +88,7 @@ try {
   await sleep(150);
   await page.clickText("오현규");
   await waitFor(() => page.evaluate('document.querySelector(".dg-substitution-confirmation") !== null'), 4000, "두 번째 교체 확인이 뜨지 않았습니다");
-  check("확인하면 교체가 확정된다", await page.clickText("교체 확정"));
+  check("확인하면 교체가 확정된다", await page.clickText("이 교체 적용"));
   await waitFor(() => page.evaluate('(document.querySelector(".dugout-notice")?.innerText ?? "").includes("교체 카드를 사용했습니다")'), 4000, "교체가 성립하지 않았습니다");
   check("손흥민이 실제로 투입된다", await page.evaluate('[...document.querySelectorAll(".player-token")].some((node) => node.innerText.includes("손흥민"))'));
 

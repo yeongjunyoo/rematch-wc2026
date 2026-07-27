@@ -236,12 +236,12 @@ export class Page {
    * 개입을 한 번도 만나지 않은 채 건너뛰면 게임이 한 번 멈춰 세우므로 그 경로를 지나간다.
    */
   async skipToEnd() {
-    await this.clickText("끝까지 건너뛰기");
+    // 결정 요구가 떠 있으면 먼저 빠져나온다. 건너뛰기 자체는 이름대로 한 번에 끝까지 간다.
     if (await this.evaluate('document.querySelector(".decision-prompt") !== null')) {
       await this.clickText("이대로 본다");
       await sleep(200);
-      await this.clickText("끝까지 건너뛰기");
     }
+    await this.clickText("끝까지 건너뛰기");
     return true;
   }
 

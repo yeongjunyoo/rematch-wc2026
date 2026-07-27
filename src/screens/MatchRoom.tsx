@@ -317,14 +317,6 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
   };
 
   const skipToEnd = () => {
-    // 개입을 한 번도 만나지 않은 채 건너뛰면 이 게임을 한 번도 해보지 않고 결과만 보게 된다.
-    // 한 번만 멈춰 세워 선택지를 보여준다. 두 번째부터는 그대로 건너뛴다.
-    if (runtime !== null && runtime.interventions.length === 0 && !promptedOnce.current) {
-      promptedOnce.current = true;
-      setPlaying(false);
-      setDecisionPrompt(true);
-      return;
-    }
     setPlaying(false);
     setBeat(null);
     resumeAfterBeat.current = false;

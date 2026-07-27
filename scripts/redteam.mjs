@@ -57,7 +57,7 @@ async function substitute(inName, outName) {
   if (!(await page.clickText(outName))) return false;
   await sleep(120);
   if (!(await page.evaluate("document.querySelector('.dg-substitution-confirmation') !== null"))) return false;
-  const done = await page.clickText("교체 확정");
+  const done = await page.clickText("이 교체 적용");
   await sleep(120);
   return done;
 }
@@ -227,7 +227,7 @@ try {
     await pressEnter();
     await sleep(120);
     // 확인 단계도 키보드로 넘을 수 있어야 마우스 없이 교체가 완결된다.
-    await page.evaluate("(() => { const b = [...document.querySelectorAll('.dg-substitution-confirmation button')].find((x) => x.innerText.includes('교체 확정')); if (b) b.focus(); return true; })()");
+    await page.evaluate("(() => { const b = [...document.querySelectorAll('.dg-substitution-confirmation button')].find((x) => x.innerText.includes('이 교체 적용')); if (b) b.focus(); return true; })()");
     await pressEnter();
     await sleep(120);
     keyboardSub = await page.evaluate("document.querySelector('.dugout-notice')?.innerText.includes('교체 카드를 사용했습니다') ?? false");
