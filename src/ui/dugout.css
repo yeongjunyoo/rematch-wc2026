@@ -64,3 +64,15 @@
   font-size: .88rem;
   line-height: 1.5;
 }
+
+/* 포메이션 변경이 무엇을 바꿨는지. 자기 조작이 먹혔는지 확인할 수 없으면 그 조작은 없는 것과 같다. */
+.dg-formation-note {
+  width: min(100%, 38rem);
+  margin: 0 auto .35rem;
+  padding: .5rem .75rem;
+  border-left: 3px solid #396e5d;
+  background: #f0f5f2;
+  color: #1e2528;
+  font-size: .86rem;
+  line-height: 1.5;
+}

@@ -71,6 +71,27 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
   const exposureShift = Math.round((weights.concede - 1) * 100);
   const shiftWord = (value: number) => value === 0 ? "그대로" : value > 0 ? `${value}퍼센트 증가` : `${Math.abs(value)}퍼센트 감소`;
   const tacticPreview = `지금 설정이면 우리 기회는 ${shiftWord(chanceShift)}, 상대에게 내주는 위험은 ${shiftWord(exposureShift)}입니다.`;
+  // 포메이션이 무엇을 바꿨는지 줄 수로 말한다. 숫자가 같은 줄은 언급하지 않는다.
+  const lineCounts = (preset: FormationPreset) => {
+    const slots = FORMATION_SLOTS[preset];
+    return {
+      defenders: slots.filter((slot) => slot.x > 10 && slot.x <= 35).length,
+      midfielders: slots.filter((slot) => slot.x > 35 && slot.x <= 65).length,
+      forwards: slots.filter((slot) => slot.x > 65).length,
+    };
+  };
+  const formationNote = formation === initialFormation
+    ? null
+    : (() => {
+      const before = lineCounts(initialFormation);
+      const after = lineCounts(formation);
+      const parts = [
+        before.defenders === after.defenders ? null : `수비 ${before.defenders}명에서 ${after.defenders}명`,
+        before.midfielders === after.midfielders ? null : `미드필더 ${before.midfielders}명에서 ${after.midfielders}명`,
+        before.forwards === after.forwards ? null : `공격수 ${before.forwards}명에서 ${after.forwards}명`,
+      ].filter((part): part is string => part !== null);
+      return `${initialFormation}에서 ${formation}으로 바꿨습니다.${parts.length === 0 ? "" : ` ${parts.join(", ")}.`}`;
+    })();
 
   const statusGuide = cardsRemaining === 0
     ? "교체 카드를 모두 사용했습니다. 포메이션과 팀 지시는 바꿀 수 있습니다."
@@ -234,6 +255,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
     <section ref={dialogRef} className="dugout-overlay" role="dialog" aria-modal="true" tabIndex={-1} aria-label="더그아웃 전술 편집" onKeyDown={handleDialogKeyDown} onPointerDown={startDrag} onPointerMove={drag.onPointerMove} onPointerUp={finishDrag} onPointerCancel={drag.onPointerCancel} onLostPointerCapture={drag.onLostPointerCapture}>
       <header className="dugout-header"><div><p className="eyebrow">더그아웃, {minute}분</p><h2>개입 {tokenIndex + 1}</h2></div><button ref={closeButtonRef} type="button" className="text-button" onClick={onClose}>닫기</button></header>
       <p className="dg-status-guide" role="status">{statusGuide}</p>
+      {formationNote === null ? null : <p className="dg-formation-note" role="status">{formationNote}</p>}
       <p className="dg-tactic-preview" role="status">{tacticPreview}</p>
       <section className="bench" aria-label="벤치 선수" style={SCROLL_REGION_STYLE}>
         <p>벤치, 교체 카드 {cardsRemaining}장{cardsRemaining > 0 ? ". 누르면 넣을 선수로 선택됩니다" : ""}</p>
