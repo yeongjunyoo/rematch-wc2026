@@ -215,7 +215,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
       ? { screen: "notFound", affordances: ["홈으로 돌아가기"], headline: "시나리오를 찾을 수 없습니다", detail: {}, feed: [] }
       : {
         screen: "match",
-        headline: scenario.displayTitle,
+        headline: `${scenario.userTeam.displayName} 대 ${scenario.opponentTeam.displayName}`,
         affordances: (() => {
           // 더그아웃이 열려 있으면 뒤 화면 조작은 눌리지 않는다. 스냅샷이 그것들을 계속 발행하면
           // 에이전트는 사람이 못 누르는 것을 누르려 하고, 사람이 누를 수 있는 것은 보지 못한다.

@@ -28,7 +28,7 @@ export function Home() {
     affordances: [...SCENARIO_AFFORDANCES, "경기 기록 보기", "도움말과 데이터 안내"],
     detail: Object.fromEntries(SCENARIOS.map((scenario, index) => [
       `경기${index + 1}`,
-      `${scenario.displayTitle}, 지휘 팀 ${scenario.userTeam.displayName}, 이어받는 시점 ${scenario.interventionStartMinute}분 ${scenario.startingUserGoals}대${scenario.startingOpponentGoals}, 미션 ${scenario.mission.brief}`,
+      `${scenario.userTeam.displayName} 대 ${scenario.opponentTeam.displayName}, 실제 결과 ${scenario.actualTerminal.userGoals}대${scenario.actualTerminal.opponentGoals}, 지휘 팀 ${scenario.userTeam.displayName}, 이어받는 시점 ${scenario.interventionStartMinute}분 ${scenario.startingUserGoals}대${scenario.startingOpponentGoals}, 미션 ${scenario.mission.brief}`,
     ])),
     feed: [],
   });
@@ -51,7 +51,8 @@ export function Home() {
           {SCENARIOS.map((scenario, index) => (
             <article className={`hm-card${index === 0 ? " hm-card-featured" : ""}`} key={scenario.id}>
               {index === 0 ? <p className="hm-featured-label">첫 번째 리매치</p> : null}
-              <h3>{scenario.displayTitle}</h3>
+              <h3>{scenario.userTeam.displayName} 대 {scenario.opponentTeam.displayName}</h3>
+              <p className="hm-actual">실제 결과 {scenario.actualTerminal.userGoals}대{scenario.actualTerminal.opponentGoals}</p>
               <p className="hm-meta">{scenario.userTeam.displayName} 지휘, {scenario.interventionStartMinute}분부터, {scenario.startingUserGoals}대{scenario.startingOpponentGoals}</p>
               {index === 0 ? <p className="hm-situation">{situationLine(scenario)}</p> : null}
               <p className="hm-mission">{scenario.mission.brief}</p>

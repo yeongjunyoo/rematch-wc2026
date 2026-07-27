@@ -157,3 +157,6 @@
 
 /* 제목 카피 아래 한 줄. 카피는 서사를 세우고 이 줄은 무엇을 하는 게임인지를 세운다. */
 .hm-what { margin: .55rem 0 0; color: #50605c; font-size: clamp(.95rem, 2.6vw, 1.05rem); line-height: 1.55; }
+
+/* 역사 스코어는 제목이 아니라 별도 사실로 둔다. 제목에 두면 사용자가 자기 결과로 읽는다. */
+.hm-actual { margin: .1rem 0 .5rem; color: #62706d; font-size: .84rem; }

@@ -75,7 +75,7 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
       ? { screen: "notFound", affordances: ["홈으로 돌아가기"], headline: "시나리오를 찾을 수 없습니다", detail: {}, feed: [] }
       : {
         screen: "report",
-        headline: `${scenario.displayTitle} 결과 리포트`,
+        headline: `${scenario.userTeam.displayName} 대 ${scenario.opponentTeam.displayName} 결과 리포트`,
         affordances: mine === null
           ? ["매치룸으로 가기", "새 리매치 시작", "명예의 전당", "홈으로 돌아가기"]
           : ["새 리매치 시작", "같은 경기 다시 보기", "명예의 전당", "홈으로 돌아가기"],
