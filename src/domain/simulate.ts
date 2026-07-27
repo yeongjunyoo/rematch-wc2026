@@ -17,6 +17,89 @@ export interface WorldTraceEntry { readonly namespace: string; readonly minute: 
 export interface ExpectedChanceEntry { readonly side: Side; readonly minute: number; readonly expected: number }
 export interface SimulationTrace { readonly state: MatchState; readonly timeline: readonly MatchEvent[]; readonly worldTrace: readonly WorldTraceEntry[]; readonly expectedChanceTrace: readonly ExpectedChanceEntry[] }
 
+/**
+ * 재개 가능한 경기 진행 상태.
+ *
+ * 배치 시뮬레이션과 화면의 분 단위 재생이 같은 한 개의 전이 함수를 쓴다.
+ * 두 경로가 갈라지면 "화면에서 본 경기"와 "리포트가 계산한 경기"가 달라지므로
+ * 여기가 유일한 전이 정본이고 `tickRuntime`이 유일한 한 걸음이다.
+ */
+export interface MatchRuntime {
+  readonly scenario: ScenarioDeclaration;
+  readonly world: WorldSeed;
+  readonly state: MatchState;
+  readonly interventions: readonly Intervention[];
+  readonly directiveHistory: readonly DirectiveStamp[];
+  /** 이미 경기에 반영된 개입 수. 나머지는 예약분이다. */
+  readonly appliedCount: number;
+  readonly expectedChanceTrace: readonly ExpectedChanceEntry[];
+}
+
+type DirectiveStamp = { readonly minute: number; readonly directives: TacticalDirectives };
+
+export function createRuntime(scenario: ScenarioDeclaration, world: WorldSeed, startState: MatchState, interventions: readonly Intervention[] = []): MatchRuntime {
+  const sorted = [...interventions].sort((left, right) => left.atMinute - right.atMinute || left.tokenIndex - right.tokenIndex);
+  return { scenario, world, state: startState, interventions: sorted, directiveHistory: [], appliedCount: 0, expectedChanceTrace: [] };
+}
+
+export function isFinished(runtime: MatchRuntime): boolean {
+  return runtime.state.clock.phase === "finished";
+}
+
+/**
+ * 지금 시점에 개입을 예약한다. 확정 분을 현재 절대 분으로 고정해야
+ * 같은 행동 순서가 배치 재현에서도 같은 분에 적용된다.
+ */
+export function commitIntervention(runtime: MatchRuntime, intervention: Intervention): MatchRuntime {
+  const scheduled: Intervention = { ...intervention, atMinute: runtime.state.clock.absoluteMinute };
+  return { ...runtime, interventions: [...runtime.interventions, scheduled] };
+}
+
+/** 정확히 한 걸음(정규 진행 1분 또는 승부차기 1회)만 전진한다. */
+export function tickRuntime(runtime: MatchRuntime): MatchRuntime {
+  if (isFinished(runtime)) return runtime;
+  const book = bookFor(runtime.world);
+  const { scenario } = runtime;
+
+  if (runtime.state.clock.phase === "shootout") {
+    const attempts = runtime.state.shootout?.attempts.length ?? 0;
+    if (attempts >= MAX_SHOOTOUT_ATTEMPTS) throw new Error("Simulation exceeded the shootout attempt limit.");
+    const applied = runtime.interventions.slice(0, runtime.appliedCount);
+    return { ...runtime, state: takePenalty(runtime.state, scenario, book, attempts + 1, applied) };
+  }
+  if (runtime.state.clock.absoluteMinute >= MAX_ABSOLUTE_MINUTE) throw new Error("Simulation exceeded the absolute minute limit.");
+
+  let state = runtime.state;
+  let appliedCount = runtime.appliedCount;
+  const directiveHistory = [...runtime.directiveHistory];
+  while (appliedCount < runtime.interventions.length && runtime.interventions[appliedCount]!.atMinute <= state.clock.absoluteMinute) {
+    const intervention = runtime.interventions[appliedCount]!;
+    state = applyIntervention(state, intervention);
+    directiveHistory.push({ minute: state.clock.absoluteMinute, directives: intervention.directives });
+    appliedCount += 1;
+  }
+  state = respondToObservedDirectives(state, directiveHistory, runtime.world);
+  state = { ...state, clock: advanceClock(state.clock, scenario.format) };
+  const chances = createChances(state, scenario, runtime.interventions.slice(0, appliedCount), book);
+  state = chances.state;
+  if (state.clock.phase !== "finished") state = stepPhase(state, scenario.format, scenario.derivedOutcomeRule).state;
+
+  return {
+    ...runtime,
+    state,
+    appliedCount,
+    directiveHistory,
+    expectedChanceTrace: [...runtime.expectedChanceTrace, ...chances.traced],
+  };
+}
+
+/** 종료까지 남은 걸음을 모두 밟는다. */
+export function runToTerminal(runtime: MatchRuntime): MatchRuntime {
+  let current = runtime;
+  while (!isFinished(current)) current = tickRuntime(current);
+  return current;
+}
+
 /** Runs a match from its handed-over state without introducing ambient randomness. */
 export function simulateToTerminal(input: SimulationInput): { state: MatchState; timeline: readonly MatchEvent[] } {
   const result = runSimulation(input);
@@ -27,35 +110,9 @@ export function simulateToTerminal(input: SimulationInput): { state: MatchState;
 export function simulateWithTrace(input: SimulationInput): SimulationTrace { return runSimulation(input); }
 
 function runSimulation(input: SimulationInput): SimulationTrace {
-  const world = new WorldBook(input.world);
-  const interventions = [...input.interventions].sort((left, right) => left.atMinute - right.atMinute || left.tokenIndex - right.tokenIndex);
-  const directiveHistory: { minute: number; directives: TacticalDirectives }[] = [];
-  const expectedChanceTrace: ExpectedChanceEntry[] = [];
-  let interventionIndex = 0;
-  let state = input.startState;
-
-  while (state.clock.phase !== "finished") {
-    if (state.clock.phase === "shootout") {
-      const attempts = state.shootout?.attempts.length ?? 0;
-      if (attempts >= MAX_SHOOTOUT_ATTEMPTS) throw new Error("Simulation exceeded the shootout attempt limit.");
-      state = takePenalty(state, input.scenario, world, attempts + 1, interventions.slice(0, interventionIndex));
-      continue;
-    }
-    if (state.clock.absoluteMinute >= MAX_ABSOLUTE_MINUTE) throw new Error("Simulation exceeded the absolute minute limit.");
-
-    while (interventionIndex < interventions.length && interventions[interventionIndex]!.atMinute <= state.clock.absoluteMinute) {
-      const intervention = interventions[interventionIndex]!;
-      state = applyIntervention(state, intervention);
-      directiveHistory.push({ minute: state.clock.absoluteMinute, directives: intervention.directives });
-      interventionIndex += 1;
-    }
-    state = respondToObservedDirectives(state, directiveHistory, input.world);
-    state = { ...state, clock: advanceClock(state.clock, input.scenario.format) };
-    state = createChances(state, input.scenario, interventions.slice(0, interventionIndex), world, expectedChanceTrace);
-    if (state.clock.phase !== "finished") state = stepPhase(state, input.scenario.format, input.scenario.derivedOutcomeRule).state;
-  }
-  if (state.terminal === null) throw new Error("Finished simulation did not produce terminal facts.");
-  return { state, timeline: state.events, worldTrace: world.trace, expectedChanceTrace };
+  const finished = runToTerminal(createRuntime(input.scenario, input.world, input.startState, input.interventions));
+  if (finished.state.terminal === null) throw new Error("Finished simulation did not produce terminal facts.");
+  return { state: finished.state, timeline: finished.state.events, worldTrace: bookFor(input.world).trace, expectedChanceTrace: finished.expectedChanceTrace };
 }
 
 function applyIntervention(state: MatchState, intervention: Intervention): MatchState {
@@ -81,22 +138,23 @@ function respondToObservedDirectives(state: MatchState, history: readonly { minu
   };
 }
 
-function createChances(state: MatchState, scenario: ScenarioDeclaration, applied: readonly Intervention[], world: WorldBook, trace: ExpectedChanceEntry[]): MatchState {
+function createChances(state: MatchState, scenario: ScenarioDeclaration, applied: readonly Intervention[], world: WorldBook): { state: MatchState; traced: readonly ExpectedChanceEntry[] } {
   const minute = state.clock.absoluteMinute;
   const user = userProfile(scenario, applied[applied.length - 1]);
   const opponent = opponentProfile(scenario);
+  const traced: ExpectedChanceEntry[] = [];
   let next = state;
   for (const side of ["user", "opponent"] as const) {
     const chanceDraw = world.draw(`chance:${side}`, minute);
     const conversionDraw = world.draw(`conversion:${side}`, minute);
     const expected = chanceExpectation(side, next, scenario, user, opponent);
-    trace.push({ side, minute, expected });
+    traced.push({ side, minute, expected });
     if (chanceDraw >= expected) continue;
     const converted = conversionThreshold(side, next, user, opponent) > conversionDraw;
     next = { ...next, events: [...next.events, { type: "chance", side, shooterId: `${side}-attack-${minute}`, quality: Math.round(expected * 100) / 100, converted, clock: next.clock }] };
     if (converted) next = applyGoal(next, scenario.format, { side, scorerId: `${side}-attack-${minute}`, kind: "openPlay" }, scenario.derivedOutcomeRule);
   }
-  return next;
+  return { state: next, traced };
 }
 
 function chanceExpectation(side: Side, state: MatchState, scenario: ScenarioDeclaration, user: TeamProfile, opponent: TeamProfile): number {
@@ -177,4 +235,20 @@ class WorldBook {
     this.draws = new Map(entries.map((entry) => [`${entry.namespace}:${entry.minute}`, entry.value]));
   }
   draw(namespace: string, minute: number): number { const value = this.draws.get(`${namespace}:${minute}`); if (value === undefined) throw new Error(`Missing world draw for ${namespace} at ${minute}.`); return value; }
+}
+
+/**
+ * 같은 시드의 추출표를 재사용한다. 분 단위 재생은 한 경기에서 tick을 수백 번 호출하므로
+ * 매번 1000여 개의 해시를 다시 계산하면 재생이 끊긴다. 표 자체는 시드만의 함수라
+ * 캐시가 결과를 바꾸지 않는다.
+ */
+const BOOKS = new Map<string, WorldBook>();
+
+function bookFor(world: WorldSeed): WorldBook {
+  const key = [world.scenarioId, world.attemptIndex, world.publishedSeed, world.engineVersion, world.dataVersion].join("|");
+  const cached = BOOKS.get(key);
+  if (cached !== undefined) return cached;
+  const book = new WorldBook(world);
+  BOOKS.set(key, book);
+  return book;
 }
