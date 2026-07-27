@@ -6,10 +6,62 @@
  * Chrome DevTools Protocol을 Node 내장 WebSocket으로 직접 말하므로 새 의존성이 없다.
  */
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { deflateSync, inflateSync } from "node:zlib";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import process from "node:process";
+
+/**
+ * 화면 갈무리 PNG를 IDAT 한 덩어리로 다시 묶는다.
+ *
+ * 브라우저는 IDAT를 4096바이트 단위로 잘라 내보낸다. 첫 IDAT만 읽는 소비자는
+ * 잘린 스트림을 펼쳐 거의 단색으로 보게 되고, 실제로는 내용이 가득한 갈무리가
+ * 빈 화면으로 판정된다. 픽셀은 그대로 두고 담는 방식만 표준적인 한 덩어리로 바꾼다.
+ */
+export function repackPng(buffer) {
+  if (buffer.length < 8 || buffer.readUInt32BE(0) !== 0x89504e47) return buffer;
+  const head = [];
+  const tail = [];
+  const idat = [];
+  let offset = 8;
+  while (offset + 8 <= buffer.length) {
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.toString("latin1", offset + 4, offset + 8);
+    const chunk = buffer.subarray(offset, offset + 12 + length);
+    if (type === "IDAT") idat.push(buffer.subarray(offset + 8, offset + 8 + length));
+    else if (idat.length === 0) head.push(chunk);
+    else tail.push(chunk);
+    offset += 12 + length;
+    if (type === "IEND") break;
+  }
+  if (idat.length <= 1) return buffer;
+
+  const raw = inflateSync(Buffer.concat(idat));
+  const packed = deflateSync(raw, { level: 9 });
+  const body = Buffer.alloc(packed.length + 12);
+  body.writeUInt32BE(packed.length, 0);
+  body.write("IDAT", 4, "latin1");
+  packed.copy(body, 8);
+  body.writeInt32BE(crc32(body.subarray(4, packed.length + 8)), packed.length + 8);
+  return Buffer.concat([buffer.subarray(0, 8), ...head, body, ...tail]);
+}
+
+const CRC_TABLE = (() => {
+  const table = new Int32Array(256);
+  for (let index = 0; index < 256; index += 1) {
+    let value = index;
+    for (let bit = 0; bit < 8; bit += 1) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+    table[index] = value;
+  }
+  return table;
+})();
+
+function crc32(bytes) {
+  let crc = -1;
+  for (const byte of bytes) crc = (CRC_TABLE[(crc ^ byte) & 0xff] ?? 0) ^ (crc >>> 8);
+  return crc ^ -1;
+}
 
 export function findHeadlessShell() {
   const root = join(process.env.LOCALAPPDATA ?? "", "ms-playwright");
@@ -156,6 +208,27 @@ export class Page {
       target.click();
       return true;
     })()`);
+  }
+
+  /**
+   * 특정 요소만 잘라 담은 화면 갈무리.
+   * 페이지 전체를 담으면 여백이 대부분을 차지해 무엇을 확인했는지 증거에서 사라진다.
+   */
+  async screenshotClip(selector, path) {
+    const box = await this.evaluate(`(() => {
+      const node = document.querySelector(${JSON.stringify(selector)});
+      if (!node) return null;
+      const rect = node.getBoundingClientRect();
+      return { x: rect.x + window.scrollX, y: rect.y + window.scrollY, width: rect.width, height: rect.height };
+    })()`);
+    if (box === null || box.width < 8 || box.height < 8) return null;
+    const result = await this.send("Page.captureScreenshot", {
+      format: "png",
+      captureBeyondViewport: true,
+      clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 2 },
+    });
+    writeFileSync(path, repackPng(Buffer.from(result.data, "base64")));
+    return path;
   }
 
   close() {

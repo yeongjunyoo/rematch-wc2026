@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
-import { Page, baseUrlFor, killBrowser, launchBrowser, sleep, startPreview, waitFor } from "./lib/cdp.mjs";
+import { Page, baseUrlFor, killBrowser, launchBrowser, repackPng, sleep, startPreview, waitFor } from "./lib/cdp.mjs";
 
 const REMOTE = process.env.REMATCH_BASE;
 const PORT = 4187;
@@ -12,17 +12,29 @@ mkdirSync(OUT, { recursive: true });
 const cases = [];
 let page;
 
+const trace = [];
+
 function record(id, scenario, expected, actual, pass, evidence = []) {
-  const item = { id, scenario, actions: [scenario], expected, actual, verdict: pass ? "통과" : "실패", evidence };
+  const drained = trace.splice(0, trace.length);
+  // 각 사례가 실제로 집행된 시각. 기록 시점을 그대로 남겨 전사 기록이 재구성이 아님을 드러낸다.
+  const item = { id, scenario, at: new Date().toISOString(), calls: drained, actions: [scenario], expected, actual, verdict: pass ? "통과" : "실패", evidence };
   cases.push(item);
   console.log(`${pass ? "PASS" : "FAIL"} ${id} ${scenario}: ${actual}`);
   return item;
 }
 
-async function shot(name) {
-  const data = await page.send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+/**
+ * 화면 갈무리. 확인 대상 영역이 있으면 그 영역만 잘라 담는다.
+ * 페이지 전체를 담으면 여백이 95퍼센트를 차지해 무엇을 확인했는지가 증거에서 사라진다.
+ */
+async function shot(name, selector = null) {
   const file = `artifacts/redteam/${name}.png`;
-  writeFileSync(resolve(file), Buffer.from(data.data, "base64"));
+  if (selector !== null) {
+    const clipped = await page.screenshotClip(selector, resolve(file));
+    if (clipped !== null) return file;
+  }
+  const data = await page.send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+  writeFileSync(resolve(file), repackPng(Buffer.from(data.data, "base64")));
   return file;
 }
 
@@ -82,10 +94,28 @@ try {
   browser = launchBrowser(CDP_PORT);
   await waitFor(async () => (await fetch(`http://127.0.0.1:${CDP_PORT}/json/version`)).ok, 20000, "브라우저 실패");
   page = await Page.attach(CDP_PORT, BASE);
+
+  // 실제로 브라우저에 보낸 호출을 그대로 기록한다. 사례 표는 요약이고, 이 기록이 원본이다.
+  const rawEvaluate = page.evaluate.bind(page);
+  const rawClickText = page.clickText.bind(page);
+  const rawGoto = page.goto.bind(page);
+  page.evaluate = (expression) => {
+    const selector = /querySelector(?:All)?\(\s*['"`]([^'"`]+)['"`]/.exec(String(expression))?.[1] ?? null;
+    trace.push({ type: "evaluate", timestamp: new Date().toISOString(), selector, expression: String(expression).slice(0, 400) });
+    return rawEvaluate(expression);
+  };
+  page.clickText = (label) => {
+    trace.push({ type: "click", timestamp: new Date().toISOString(), selector: `text=${label}`, expression: `clickText(${JSON.stringify(label)})` });
+    return rawClickText(label);
+  };
+  page.goto = (hash) => {
+    trace.push({ type: "navigate", timestamp: new Date().toISOString(), selector: null, expression: `goto(${JSON.stringify(hash)})` });
+    return rawGoto(hash);
+  };
   await waitFor(() => page.evaluate("document.querySelector('#root') !== null"), 10000, "첫 화면 실패");
 
   await fresh();
-  const pitchShot = await shot("01-match-pitch");
+  const pitchShot = await shot("01-match-pitch", ".match-stage");
   record("R01", "피치와 HUD 노출", "피치, 점수, 시계, 토큰이 한 화면에 있다", await page.evaluate("(() => ({ pitch: !!document.querySelector('.lp-pitch'), hud: !!document.querySelector('.mh-hud'), text: document.body.innerText.includes('개입 토큰') }))()"), await page.evaluate("!!document.querySelector('.lp-pitch') && !!document.querySelector('.mh-hud')"), [pitchShot]);
 
   await fresh();
@@ -100,7 +130,7 @@ try {
   const benchNames = await page.evaluate("[...document.querySelectorAll('.bench-card')].map((x) => x.innerText.trim())");
   const outgoing = await page.evaluate("document.querySelector('.player-token')?.innerText.trim()");
   await page.clickText(benchNames[0]);
-  const benchShot = await shot("02-dugout-selected");
+  const benchShot = await shot("02-dugout-selected", ".dugout-overlay");
   const selectedOnce = await page.evaluate("document.querySelectorAll('.bench-card.is-selected').length");
   await page.clickText(benchNames[0]);
   const selectedTwice = await page.evaluate("document.querySelectorAll('.bench-card.is-selected').length");
@@ -136,7 +166,7 @@ try {
   // 축구 규칙상 교체로 나간 선수는 그 경기에 복귀하지 못한다. 벤치에 다시 나타나면 그것이 위반이다.
   record("R05", "투입 선수 재교체와 11명 불변식", "피치는 11명이고 중복이 없으며 나간 선수는 벤치로 복귀하지 않는다", `피치 ${pitchAfterSub.length}, 고유 ${new Set(pitchAfterSub).size}, 나간선수벤치복귀 ${outgoingOnBench}`, pitchAfterSub.length === 11 && new Set(pitchAfterSub).size === 11 && outgoingOnBench === false, []);
 
-  await fresh(); await finish(); const endShot = await shot("03-after-finish");
+  await fresh(); await finish(); const endShot = await shot("03-after-finish", ".match-stage");
   const endedToken = token(await state()); const endedClick = await page.clickText("전술 바꾸기");
   record("R06", "종료 뒤 개입", "종료 뒤 개입 버튼은 불가능하다", `클릭 ${endedClick}, 토큰 ${endedToken}`, endedClick === false && endedToken === 3, [endShot]);
 
@@ -195,7 +225,29 @@ try {
   console.error(error.stack ?? error);
   record("HARNESS", "실행기", "모든 사례를 끝낸다", String(error.message ?? error), false, []);
 } finally {
-  const transcript = { generatedAt: new Date().toISOString(), base: BASE, cases };
+  const transcript = {
+    schemaVersion: 1,
+    kind: "gui-automation-transcript",
+    surface: "web",
+    tool: "chrome-devtools-protocol",
+    generatedAt: new Date().toISOString(),
+    base: BASE,
+    // 사례가 실제로 브라우저에서 집행한 행동을 한 단계씩 펼쳐 둔다.
+    actions: cases.flatMap((c) => (c.calls ?? []).map((call, index) => ({
+      id: `${c.id}-${index + 1}`,
+      type: call.type,
+      timestamp: call.timestamp,
+      selector: call.selector,
+      expression: call.expression,
+      caseId: c.id,
+      scenario: c.scenario,
+      expected: c.expected,
+      observed: typeof c.actual === "string" ? c.actual : JSON.stringify(c.actual),
+      verdict: c.verdict,
+    }))),
+    steps: cases,
+    cases,
+  };
   writeFileSync(resolve(OUT, "transcript.json"), JSON.stringify(transcript, null, 2), "utf8");
   const rows = cases.map((c) => `| ${c.id} | ${c.scenario} | ${c.expected} | ${typeof c.actual === "string" ? c.actual.replaceAll("|", "/").replaceAll("\n", "<br>") : JSON.stringify(c.actual)} | ${c.verdict} | ${c.evidence.join(", ")} |`).join("\n");
   const failures = cases.filter((c) => c.verdict === "실패");
