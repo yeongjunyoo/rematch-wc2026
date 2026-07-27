@@ -322,7 +322,9 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
         userChances={chanceTally.user}
         opponentChances={chanceTally.opponent}
         playing={playing}
-        finished={finished}
+        // 결정을 요구하는 동안에는 뒤 화면 조작을 잠근다. 그러지 않으면 사용자가
+        // 요구를 보지 못한 채 건너뛰기를 눌러 이 게임의 핵심 행동을 영영 만나지 못한다.
+        finished={finished || decisionPrompt}
         speed={speed}
         pulse={emphasis === "userGoal" || emphasis === "opponentGoal" || emphasis === "counter" ? emphasis : "none"}
         onTogglePlay={() => setPlaying((current) => !current)}
