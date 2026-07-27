@@ -175,7 +175,9 @@ function chanceExpectation(side: Side, state: MatchState, scenario: ScenarioDecl
   const aggression = side === "user" ? score.userAggression : score.opponentAggression;
   const strength = 0.72 + (own.attack + own.control) / Math.max(1, theirs.defense + theirs.control) * 0.28;
   const fatigue = staminaFactor(state.clock.absoluteMinute, own.stamina, directives.staminaDrain);
-  return clampProbability(0.115 * strength * directives.userChance * opposing.concede * aggression * (1 + edge.attack) * fatigue, 0.015, 0.32);
+  // 이어받는 시점부터 종료까지 사용자가 관측할 사건이 충분해야 전술이 결과에 닿는다.
+  // 이전 값 0.115는 27분 구간에 찬스를 세 개만 만들어 어떤 전술도 한 골을 만들지 못했다.
+  return clampProbability(0.135 * strength * directives.userChance * opposing.concede * aggression * (1 + edge.attack) * fatigue, 0.018, 0.32);
 }
 
 function conversionThreshold(side: Side, state: MatchState, user: TeamProfile, opponent: TeamProfile): number {
@@ -185,7 +187,9 @@ function conversionThreshold(side: Side, state: MatchState, user: TeamProfile, o
   const opposing = directiveWeights(side === "user" ? state.opponentDirectives : state.userDirectives);
   const edge = formationEdge(own.formation, theirs.formation);
   const strength = own.attack / Math.max(1, theirs.defense);
-  return clampProbability(0.13 * strength * directives.conversion * opposing.concede * (1 + edge.attack) * staminaFactor(state.clock.absoluteMinute, own.stamina, directives.staminaDrain), 0.025, 0.42);
+  // 전환 기본값은 실축의 슈팅당 득점 범위를 향한다. 이전 값 0.13은 찬스를 두 배로 만들어도
+  // 골이 0.13개에 그치게 해서 사용자가 자기 결정이 결과에 닿지 않는다고 느끼게 만들었다.
+  return clampProbability(0.24 * strength * directives.conversion * opposing.concede * (1 + edge.attack) * staminaFactor(state.clock.absoluteMinute, own.stamina, directives.staminaDrain), 0.06, 0.42);
 }
 
 function userProfile(scenario: ScenarioDeclaration, intervention: Intervention | undefined): TeamProfile {

@@ -73,7 +73,10 @@ export function directiveWeights(directives: TacticalDirectives): {
     userChance: Math.max(0.2, 1 + defensiveLine * 0.16 + pressing * 0.2 + tempo * 0.3 + attackRoute * 0.14 + mindset * 0.4),
     opponentChance: Math.max(0.2, 1 + defensiveLine * 0.16 - pressing * 0.2 + tempo * 0.3 + mindset * 0.4),
     conversion: 1 + tempo * 0.32 + attackRoute * 0.12 + mindset * 0.38,
-    concede: 1 + defensiveLine * 0.22 + pressing * 0.05 + tempo * 0.14 + mindset * 0.29,
+    // 노출은 상대의 찬스 수와 전환 확률에 각각 곱해지므로 실효 페널티가 제곱으로 걸린다.
+    // 이전 계수는 전면 공격 시 실효 2.9배가 되어, 지고 있을 때 공격하는 합리적 선택이
+    // 오히려 결과를 나쁘게 만들었다. 트레이드오프는 남기되 제곱 효과를 감안해 낮춘다.
+    concede: 1 + defensiveLine * 0.16 + pressing * 0.04 + tempo * 0.1 + mindset * 0.18,
     staminaDrain: 1 + pressing * 0.16 + tempo * 0.08 + mindset * 0.05,
   };
 }
@@ -95,7 +98,10 @@ export function scoreContext(
 ): { userAggression: number; opponentAggression: number } {
   const progress = regulationMinutes > 0 ? clamp(minute / regulationMinutes, 0, 1) : 1;
   const goalDifference = clamp(opponentGoals - userGoals, -4, 4);
-  const swing = clamp(goalDifference * (0.02 + progress * 0.06), -0.3, 0.3);
+  // 리드한 팀은 물러서고 뒤진 팀은 밀어붙인다. 이전 계수는 한 골 차 63분에서 스윙이
+  // 6퍼센트에 그쳐 사실상 없는 것과 같았고, 그 결과 1대0으로 앞선 상대가 남은 27분에
+  // 두 골을 더 넣는 축구가 아닌 결과가 나왔다. 경기 후반일수록 스윙이 커진다.
+  const swing = clamp(goalDifference * (0.06 + progress * 0.16), -0.45, 0.45);
   return { userAggression: 1 + swing, opponentAggression: 1 - swing };
 }
 

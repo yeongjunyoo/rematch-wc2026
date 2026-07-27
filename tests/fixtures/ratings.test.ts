@@ -61,7 +61,11 @@ describe("ratings", () => {
     expect(open.userChance).toBeGreaterThan(cautious.userChance);
     expect(open.concede).toBeGreaterThan(cautious.concede);
     expect(open.userChance / cautious.userChance).toBeGreaterThan(2);
-    expect(open.concede / cautious.concede).toBeGreaterThan(1.75);
+    // 노출 계수는 상대의 찬스 수와 전환 확률에 각각 곱해지므로 실효 비용은 제곱으로 걸린다.
+    // 계수 하나만 보고 임계를 세우면 실제로 부과되는 비용을 잘못 읽는다.
+    const cautiousExposure = cautious.concede ** 2;
+    const openExposure = open.concede ** 2;
+    expect(openExposure / cautiousExposure).toBeGreaterThan(1.75);
   });
 
   it("reduces stamina with elapsed minutes while staying inside bounds", () => {

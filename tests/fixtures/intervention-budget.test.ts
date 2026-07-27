@@ -47,23 +47,18 @@ const attacking: TacticalDirectives = { defensiveLine: 2, pressing: 1, tempo: 1,
 describe("개입 예산과 국면 계약", () => {
   it("승부차기 국면에서 확정한 개입도 실제로 적용된다", () => {
     const scenario = SCENARIOS.find((candidate) => candidate.id === "ger-par-2026-r32")!;
-    // 시드 덱을 훑어 실제로 승부차기까지 가는 시도를 찾는다. 못 찾으면 이 계약을 시험할 수 없다.
-    let reached: ReturnType<typeof createRuntime> | null = null;
-    for (let attemptIndex = 0; attemptIndex < scenario.publishedSeedDeck.length; attemptIndex += 1) {
-      let runtime = createRuntime(scenario, worldFor(scenario, attemptIndex), startState(scenario));
-      let steps = 0;
-      while (!isFinished(runtime) && runtime.state.clock.phase !== "shootout" && steps < 400) {
-        runtime = tickRuntime(runtime);
-        steps += 1;
-      }
-      if (runtime.state.clock.phase === "shootout") { reached = runtime; break; }
-    }
-    expect(reached, "공개 시드 덱 안에 승부차기에 도달하는 시도가 있어야 한다").not.toBeNull();
+    // 시드 덱이 승부차기까지 가는지에 의존하면 밸런스를 바꿀 때마다 이 계약이 조용히 사라진다.
+    // 국면을 직접 구성해 계약 자체만 검사한다.
+    const base = startState(scenario);
+    const inShootout = createRuntime(scenario, worldFor(scenario), {
+      ...base,
+      clock: { phase: "shootout", minute: 0, absoluteMinute: 120, shootoutRound: 1 },
+      shootout: { userScore: 0, opponentScore: 0, completedRounds: 0, inSuddenDeath: false, nextSide: "user", attempts: [] },
+    });
+    expect(inShootout.state.clock.phase).toBe("shootout");
+    expect(inShootout.appliedCount).toBe(0);
 
-    const before = reached!;
-    expect(before.appliedCount).toBe(0);
-
-    const committed = commitIntervention(before, interventionOf(scenario, attacking, 0));
+    const committed = commitIntervention(inShootout, interventionOf(scenario, attacking, 0));
     const stepped = tickRuntime(committed);
 
     // 예약 개입이 승부차기에서도 소비되어야 한다. 예전에는 여기서 영원히 0으로 남았다.
@@ -71,6 +66,8 @@ describe("개입 예산과 국면 계약", () => {
     expect(stepped.state.tokensRemaining).toBe(2);
     expect(stepped.state.userDirectives).toEqual(attacking);
     expect(stepped.state.events.some((event) => event.type === "intervention")).toBe(true);
+    // 그리고 그 걸음은 실제로 페널티 한 번을 진행한다.
+    expect(stepped.state.shootout?.attempts.length ?? 0).toBe(1);
   });
 
   it("승부차기 개입이 없으면 경기 결과가 그대로다", () => {

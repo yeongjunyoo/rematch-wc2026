@@ -9,5 +9,5 @@
  * 값에 마침표를 쓰지 않는다. 매치 코드가 마침표로 조각을 나누므로 버전에
  * 마침표가 들어가면 화면에 노출되는 코드가 퍼센트 인코딩으로 지저분해진다.
  */
-export const ENGINE_VERSION = "e1";
+export const ENGINE_VERSION = "e2";
 export const DATA_VERSION = "d1";
