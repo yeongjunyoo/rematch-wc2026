@@ -3,6 +3,7 @@ import { useState } from "react";
 import { clearRecords, loadRecords, recordsAvailable } from "../domain/records";
 import type { MatchRecord } from "../domain/records";
 import { matchHash, reportHash } from "../router";
+import { useAgentSnapshot } from "../agent/bridge";
 
 const GRADE_NOTE: Record<string, string> = {
   S: "미션을 완전히 달성했습니다.",
@@ -38,6 +39,14 @@ function RecordRow({ record }: { readonly record: MatchRecord }) {
 export function HallOfFame() {
   const [records, setRecords] = useState(() => loadRecords());
   const available = recordsAvailable();
+
+  useAgentSnapshot({
+    screen: "hallOfFame",
+    headline: "명예의 전당, 내가 다시 쓴 경기들",
+    affordances: records.length === 0 ? ["경기 고르러 가기", "홈으로 돌아가기"] : ["기록 전체 지우기", "홈으로 돌아가기", "도움말과 데이터 안내"],
+    detail: { 기록수: records.length, 저장소사용가능: available },
+    feed: records.map((record) => `${record.scenarioTitle} ${record.userGoals}대${record.opponentGoals} ${record.grade}등급`),
+  });
 
   return (
     <main className="page narrow-page">

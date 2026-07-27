@@ -1,6 +1,15 @@
 import { DATA_VERSION, ENGINE_VERSION } from "../domain/version";
+import { useAgentSnapshot } from "../agent/bridge";
 
 export function Help() {
+  useAgentSnapshot({
+    screen: "help",
+    headline: "REMATCH 안내",
+    affordances: ["홈으로 돌아가기", "명예의 전당"],
+    detail: { 엔진버전: ENGINE_VERSION, 데이터버전: DATA_VERSION },
+    feed: [],
+  });
+
   return (
     <main className="page narrow-page">
       <header className="screen-header"><p className="eyebrow">도움말</p><h1>REMATCH 안내</h1></header>

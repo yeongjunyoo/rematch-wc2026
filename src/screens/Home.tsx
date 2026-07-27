@@ -1,6 +1,15 @@
 import { SCENARIOS } from "../data/scenarios";
+import { useAgentSnapshot } from "../agent/bridge";
 
 export function Home() {
+  useAgentSnapshot({
+    screen: "home",
+    headline: "REMATCH, 손흥민이 벤치에 있던 그 밤을 당신이 다시 지휘한다",
+    affordances: [...SCENARIOS.map((scenario) => `벤치에 앉기 (${scenario.displayTitle})`), "도움말과 데이터 안내"],
+    detail: Object.fromEntries(SCENARIOS.map((scenario, index) => [`경기${index + 1}`, `${scenario.displayTitle}, ${scenario.interventionStartMinute}분 ${scenario.startingUserGoals}대${scenario.startingOpponentGoals}, ${scenario.mission.brief}`])),
+    feed: [],
+  });
+
   return (
     <main className="page">
       <header className="hero">

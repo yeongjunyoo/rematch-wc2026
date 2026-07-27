@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getScenario } from "../data/scenarios";
+import { useAgentSnapshot } from "../agent/bridge";
 import { saveRecord } from "../domain/records";
 import { buildMatchCode, deriveWorldSeed, formatMatchCode } from "../domain/rng";
 import { commitIntervention, createRuntime, isFinished, runToTerminal, tickRuntime } from "../domain/simulate";
@@ -181,6 +182,39 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
       savedAt: Date.now(),
     });
   }, [attemptIndex, runtime, scenario]);
+
+  // 에이전트가 읽는 스냅샷. 훅이므로 조기 반환보다 위에 있어야 하고, 그래서
+  // 시나리오가 없는 경우도 여기서 함께 표현한다.
+  useAgentSnapshot(
+    scenario === undefined || runtime === null
+      ? { screen: "notFound", affordances: ["홈으로 돌아가기"], headline: "시나리오를 찾을 수 없습니다", detail: {}, feed: [] }
+      : {
+        screen: "match",
+        headline: scenario.displayTitle,
+        affordances: [
+          isFinished(runtime) ? "결과 리포트 보기" : playing ? "일시정지" : runtime.state.events.length > 0 ? "재개" : "경기 재개",
+          ...(isFinished(runtime) ? ["새 리매치 시작"] : ["더그아웃 열기", "끝까지 건너뛰기", "1배속", "2배속", "4배속"]),
+          "홈으로 돌아가기",
+        ],
+        detail: {
+          시도: attemptIndex + 1,
+          내팀: scenario.userTeam.displayName,
+          상대팀: scenario.opponentTeam.displayName,
+          현재시각: clockLabel(runtime.state.clock),
+          국면: phaseLabel(runtime.state.clock),
+          내점수: runtime.state.userGoals,
+          상대점수: runtime.state.opponentGoals,
+          남은개입토큰: Math.max(0, runtime.state.tokensRemaining - (runtime.interventions.length - runtime.appliedCount)),
+          재생중: playing,
+          경기종료: isFinished(runtime),
+          미션: scenario.mission.brief,
+          이어받은시점: `${scenario.interventionStartMinute}분 ${scenario.startingUserGoals}대${scenario.startingOpponentGoals}`,
+          더그아웃열림: isDugoutOpen,
+          연출중: beat === null ? null : beat.headline,
+        },
+        feed: runtime.state.events.filter(isFeedWorthy).slice(-10).reverse().map((event) => `${clockLabel(event.clock)} ${commentaryFor(event, scenario)}`),
+      },
+  );
 
   if (scenario === undefined || runtime === null) {
     return <main className="page narrow-page"><h1>시나리오를 찾을 수 없습니다.</h1><a href="#/">홈으로 돌아가기</a></main>;
