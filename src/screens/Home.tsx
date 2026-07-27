@@ -8,6 +8,9 @@ function scenarioActionLabel(scenario: (typeof SCENARIOS)[number]): string {
 
 const SCENARIO_AFFORDANCES = SCENARIOS.map(scenarioActionLabel);
 
+/** 대표 경기. 제목과 첫 카드가 같은 선언을 읽어야 순서가 바뀌어도 제목이 거짓이 되지 않는다. */
+const FEATURED = SCENARIOS[0]!;
+
 /**
  * 첫 카드의 상황 한 줄.
  * 선언된 사실에서만 만든다. 문장을 박아 두면 시나리오 순서가 바뀔 때 그대로 거짓말이 된다.
@@ -25,7 +28,7 @@ export function Home() {
     affordances: [...SCENARIO_AFFORDANCES, "도움말과 데이터 안내"],
     detail: Object.fromEntries(SCENARIOS.map((scenario, index) => [
       `경기${index + 1}`,
-      `${scenario.id}, 지휘 팀 ${scenario.userTeam.displayName}, 이어받는 시점 ${scenario.interventionStartMinute}분 ${scenario.startingUserGoals}대${scenario.startingOpponentGoals}, 미션 ${scenario.mission.brief}`,
+      `${scenario.displayTitle}, 지휘 팀 ${scenario.userTeam.displayName}, 이어받는 시점 ${scenario.interventionStartMinute}분 ${scenario.startingUserGoals}대${scenario.startingOpponentGoals}, 미션 ${scenario.mission.brief}`,
     ])),
     feed: [],
   });
@@ -42,7 +45,7 @@ export function Home() {
       <section aria-labelledby="scenario-heading">
         <div className="section-heading hm-section-heading">
           <p className="eyebrow">먼저, 이 한 경기를 지휘하세요</p>
-          <h2 id="scenario-heading">63분, 당신의 선택이 시작됩니다</h2>
+          <h2 id="scenario-heading">{FEATURED.interventionStartMinute}분, 당신의 선택이 시작됩니다</h2>
         </div>
         <div className="hm-grid">
           {SCENARIOS.map((scenario, index) => (

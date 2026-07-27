@@ -4,6 +4,8 @@ import type { DecidedPhase, GradeRequirement, Intervention, MatchEvent, MatchSta
 import { getScenario } from "../data/scenarios";
 import { useAgentSnapshot } from "../agent/bridge";
 import { clockLabel, commentaryFor, isHighlight } from "../ui/commentary";
+import { recallResult } from "../ui/matchResult";
+import type { StoredMatchResult } from "../ui/matchResult";
 import { matchHash } from "../router";
 import { buildReportInsight } from "../ui/reportInsight";
 import "../ui/report.css";
@@ -12,13 +14,6 @@ interface ReportProps {
   scenarioId: string;
   attemptIndex: number;
 }
-
-type StoredResult = {
-  readonly state: MatchState;
-  readonly timeline: readonly MatchEvent[];
-  readonly interventions?: readonly Intervention[];
-  readonly matchCode?: string;
-};
 
 const phaseLabels: Record<DecidedPhase, string> = {
   regulation: "정규시간",
@@ -41,17 +36,8 @@ function resultLabel(terminal: TerminalFacts): string {
   return terminal.userResult === "win" ? "우리가 이겼습니다" : terminal.userResult === "draw" ? "비겼습니다" : "우리가 졌습니다";
 }
 
-function loadResult(scenarioId: string, attemptIndex: number): StoredResult | null {
-  try {
-    const raw = window.sessionStorage.getItem(`rematch:result:${scenarioId}:${attemptIndex}`);
-    if (raw === null) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null || !("state" in parsed) || !("timeline" in parsed)) return null;
-    const candidate = parsed as StoredResult;
-    return candidate.state.terminal === null ? null : candidate;
-  } catch {
-    return null;
-  }
+function loadResult(scenarioId: string, attemptIndex: number): StoredMatchResult | null {
+  return recallResult(scenarioId, attemptIndex).result;
 }
 
 function ResultRows({ terminal, scenarioId }: { readonly terminal: TerminalFacts; readonly scenarioId: string }) {
@@ -72,9 +58,15 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
   const comparison = scenario === undefined || mine === null ? null : compareToHistory(scenario.actualTerminal, mine);
   const grade = scenario === undefined || mine === null ? null : evaluateGrade(scenario.mission, mine);
   const highlights = result?.timeline.filter(isHighlight) ?? [];
-  const insight = scenario === undefined || mine === null || result === null
+  // 예전 형식의 저장본에는 개입 내역이 없다. 그것은 개입을 안 했다는 뜻이 아니라
+  // 기록이 남지 않았다는 뜻이므로 부정 사실로 바꾸지 않고 알 수 없음으로 유지한다.
+  const decisionsRecoverable = result?.interventions !== undefined;
+  const insight = scenario === undefined || mine === null || result === null || !decisionsRecoverable
     ? null
     : buildReportInsight({ scenario, terminal: mine, timeline: result.timeline, interventions: result.interventions ?? [] });
+  const tallyOnly = scenario === undefined || mine === null || result === null || decisionsRecoverable
+    ? null
+    : buildReportInsight({ scenario, terminal: mine, timeline: result.timeline, interventions: [] });
   const previousBest = bestGrade(loadRecords(), scenarioId);
   const nextAttempt = scenario === undefined ? 0 : (attemptIndex + 1) % scenario.publishedSeedDeck.length;
 
@@ -138,10 +130,12 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
 
           <section className="report-section">
             <h2>내가 바꾼 것</h2>
-            {insight?.decisions.length === 0 ? (
+            {insight === null ? (
+              <p className="rp-empty">이 결과는 개입 내역을 남기지 않던 예전 형식으로 저장되어 무엇을 바꿨는지 복원할 수 없습니다. 새 리매치를 시작하면 이 기록이 남습니다.</p>
+            ) : insight.decisions.length === 0 ? (
               <p className="rp-empty">확정한 개입이 없습니다. 다음 시도에서는 전술 하나를 바꿔 결과를 비교해 보세요.</p>
             ) : (
-              <ol className="rp-decisions">{insight?.decisions.map((decision) => (
+              <ol className="rp-decisions">{insight.decisions.map((decision) => (
                 <li className="rp-decision" key={decision.tokenIndex}>
                   <h3>{decision.headline}</h3>
                   {decision.changes.length === 0 ? <p>기록할 전술 변화가 없습니다.</p> : <ul className="rp-changes">{decision.changes.map((change) => <li key={change}>{change}</li>)}</ul>}
@@ -152,25 +146,25 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
 
           <section className="report-section">
             <h2>왜 이렇게 끝났나</h2>
-            <p className="rp-why">{insight?.why}</p>
+            <p className="rp-why">{(insight ?? tallyOnly)?.why}</p>
             {/*
               이 집계는 이어받은 시점 이후에 일어난 것만 센다. 그 사실을 밝히지 않으면
               최종 스코어 0대1 옆에 상대 득점 0골이 나란히 서서 사용자가 모순으로 읽는다.
             */}
             <p className="rp-tally-scope">{scenario.interventionStartMinute}분에 이어받은 뒤 기록된 것만 셉니다. 그 전의 {scenario.startingUserGoals}대{scenario.startingOpponentGoals}은 이미 벌어진 일입니다.</p>
             <dl className="rp-tally">
-              <div><dt>우리 찬스</dt><dd>{insight?.tally.userChances}번</dd></div>
-              <div><dt>상대 찬스</dt><dd>{insight?.tally.opponentChances}번</dd></div>
-              <div><dt>우리 득점</dt><dd>{insight?.tally.userGoalsScored}골</dd></div>
-              <div><dt>상대 득점</dt><dd>{insight?.tally.opponentGoalsScored}골</dd></div>
-              <div><dt>상대 반격</dt><dd>{insight?.tally.aiCounters}번</dd></div>
-              <div><dt>교체</dt><dd>{insight?.tally.substitutions}번</dd></div>
+              <div><dt>우리 찬스</dt><dd>{(insight ?? tallyOnly)?.tally.userChances}번</dd></div>
+              <div><dt>상대 찬스</dt><dd>{(insight ?? tallyOnly)?.tally.opponentChances}번</dd></div>
+              <div><dt>우리 득점</dt><dd>{(insight ?? tallyOnly)?.tally.userGoalsScored}골</dd></div>
+              <div><dt>상대 득점</dt><dd>{(insight ?? tallyOnly)?.tally.opponentGoalsScored}골</dd></div>
+              <div><dt>상대 반격</dt><dd>{(insight ?? tallyOnly)?.tally.aiCounters}번</dd></div>
+              <div><dt>교체</dt><dd>{(insight ?? tallyOnly)?.tally.substitutions}번</dd></div>
             </dl>
           </section>
 
           <section className="report-section">
             <h2>다음에 뭘 바꿀까</h2>
-            <p className="rp-next">{insight?.nextTry}</p>
+            <p className="rp-next">{insight === null ? "이 결과는 개입 내역이 없어 다음 수를 제안할 수 없습니다. 새 리매치를 시작해 보세요." : insight.nextTry}</p>
             <nav className="screen-nav rp-next-action"><a className="button-link" href={matchHash(scenarioId, nextAttempt)}>새 리매치 시작</a></nav>
           </section>
         </>

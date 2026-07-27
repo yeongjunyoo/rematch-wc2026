@@ -1,5 +1,6 @@
-import type { Intervention, MatchEvent, ScenarioDeclaration, TerminalFacts } from "../domain/types";
-import { defaultFormation, squadFor } from "./squad";
+import { NEUTRAL_DIRECTIVES } from "../domain/types";
+import type { FormationPreset, Intervention, MatchEvent, Placement, ScenarioDeclaration, TacticalDirectives, TerminalFacts } from "../domain/types";
+import { defaultFormation, initialPlacements, squadFor } from "./squad";
 
 export interface DecisionSummary {
   readonly tokenIndex: number;
@@ -36,6 +37,9 @@ type DirectiveKey = keyof typeof directiveLabels;
 
 const directiveKeys: readonly DirectiveKey[] = ["defensiveLine", "pressing", "tempo", "attackRoute", "mindset"];
 
+/** 경기당 개입 토큰 수. 화면과 리포트가 서로 다른 숫자를 세면 사용자가 규칙을 믿지 못한다. */
+export const INTERVENTION_TOKEN_BUDGET = 3;
+
 function playerLabels(scenarioId: string): ReadonlyMap<string, string> {
   const squad = squadFor(scenarioId);
   return new Map([...squad.starters, ...squad.bench].map((player) => [player.id, player.label]));
@@ -45,25 +49,60 @@ function labelFor(players: ReadonlyMap<string, string>, id: string): string {
   return players.get(id) ?? id;
 }
 
-function directiveChanges(intervention: Intervention): readonly string[] {
+/** 직전 지시와 달라진 축만 서술한다. 유지된 축은 그 시점의 결정이 아니다. */
+function directiveChanges(previous: TacticalDirectives, next: TacticalDirectives): readonly string[] {
   return directiveKeys.flatMap((key) => {
-    const value = intervention.directives[key];
-    if (value === 0) return [];
+    const before = previous[key];
+    const after = next[key];
+    if (before === after) return [];
     const copy = directiveLabels[key];
-    return [`${copy.label} ${value < 0 ? copy.low : copy.high}`];
+    if (after === 0) return [`${copy.label} 중립으로`];
+    return [`${copy.label} ${after < 0 ? copy.low : copy.high}`];
   });
 }
 
-function decisionFor(intervention: Intervention, initialFormation: string, players: ReadonlyMap<string, string>): DecisionSummary {
+/** 직전 배치와 달라진 선수. 위치 이동이나 맞교환만 확정한 개입도 유효한 결정이다. */
+function placementChanges(
+  previous: readonly Placement[],
+  next: readonly Placement[],
+  substituted: ReadonlySet<string>,
+  players: ReadonlyMap<string, string>,
+): readonly string[] {
+  const before = new Map(previous.map((placement) => [placement.playerId, placement.slot]));
+  const moved = next
+    .filter((placement) => !substituted.has(placement.playerId))
+    .filter((placement) => {
+      const slot = before.get(placement.playerId);
+      // 교체로 새로 들어온 선수는 교체 문구가 이미 설명한다. 여기서 또 세지 않는다.
+      if (slot === undefined) return false;
+      return slot.x !== placement.slot.x || slot.y !== placement.slot.y;
+    })
+    .map((placement) => labelFor(players, placement.playerId));
+  if (moved.length === 0) return [];
+  if (moved.length <= 3) return [`${moved.join(", ")} 위치 조정`];
+  return [`선수 ${moved.length}명 위치 조정`];
+}
+
+interface EditorState {
+  readonly formation: FormationPreset;
+  readonly directives: TacticalDirectives;
+  readonly placements: readonly Placement[];
+}
+
+function decisionFor(intervention: Intervention, previous: EditorState, players: ReadonlyMap<string, string>): DecisionSummary {
   const substitutions = intervention.substitutions.map((substitution) =>
     `${labelFor(players, substitution.outId)} 대신 ${labelFor(players, substitution.inId)} 투입`,
   );
-  const formation = intervention.formation === initialFormation ? [] : [`포메이션 ${initialFormation}에서 ${intervention.formation}`];
-  const changes = [...substitutions, ...formation, ...directiveChanges(intervention)];
+  const substituted = new Set(intervention.substitutions.map((substitution) => substitution.inId));
+  const formation = intervention.formation === previous.formation ? [] : [`포메이션 ${previous.formation}에서 ${intervention.formation}`];
+  const directives = directiveChanges(previous.directives, intervention.directives);
+  const placements = placementChanges(previous.placements, intervention.placements, substituted, players);
+  const changes = [...substitutions, ...formation, ...directives, ...placements];
   const headlineParts = [
     ...intervention.substitutions.map((substitution) => `${labelFor(players, substitution.inId)} 투입`),
     ...formation.map(() => `${intervention.formation}로 전환`),
-    ...directiveChanges(intervention),
+    ...directives,
+    ...placements,
   ];
   const headline = headlineParts.length === 0 ? `${intervention.atMinute}분, 전술을 확정` : `${intervention.atMinute}분, ${headlineParts.join("하고 ")}`;
   return { tokenIndex: intervention.tokenIndex, minute: intervention.atMinute, headline, changes };
@@ -98,7 +137,7 @@ function whyFor(terminal: TerminalFacts, tally: MatchTally, hasDecisions: boolea
 }
 
 function nextTryFor(scenario: ScenarioDeclaration, interventions: readonly Intervention[]): string {
-  const remainingTokens = Math.max(0, 3 - interventions.length);
+  const remainingTokens = Math.max(0, INTERVENTION_TOKEN_BUDGET - interventions.length);
   if (remainingTokens > 0) return `개입 토큰 ${remainingTokens}개를 남겼습니다. 다음 시도에서는 남은 토큰으로 다른 전술을 확정해 보세요.`;
   if (!interventions.some((intervention) => intervention.substitutions.length > 0)) return "교체 카드를 쓰지 않았습니다. 다음 시도에서는 교체로 변화를 시험해 보세요.";
   if (!interventions.some((intervention) => directiveKeys.some((key) => intervention.directives[key] !== 0))) return "지시를 바꾸지 않았습니다. 다음 시도에서는 지시 한 축을 바꿔 시험해 보세요.";
@@ -113,11 +152,17 @@ export function buildReportInsight(input: {
   readonly interventions: readonly Intervention[];
 }): ReportInsight {
   const players = playerLabels(input.scenario.id);
-  const initialFormation = defaultFormation(input.scenario.id);
-  const decisions = input.interventions
-    .slice()
-    .sort((left, right) => left.tokenIndex - right.tokenIndex)
-    .map((intervention) => decisionFor(intervention, initialFormation, players));
+  // 각 개입은 그 직전 상태와 비교해야 그 시점에 실제로 내린 결정이 된다.
+  let state: EditorState = {
+    formation: defaultFormation(input.scenario.id),
+    directives: NEUTRAL_DIRECTIVES,
+    placements: initialPlacements(input.scenario.id),
+  };
+  const decisions: DecisionSummary[] = [];
+  for (const intervention of [...input.interventions].sort((left, right) => left.tokenIndex - right.tokenIndex)) {
+    decisions.push(decisionFor(intervention, state, players));
+    state = { formation: intervention.formation, directives: intervention.directives, placements: intervention.placements };
+  }
   const tally = tallyFor(input.timeline);
   return {
     decisions,

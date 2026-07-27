@@ -11,7 +11,7 @@
  */
 import process from "node:process";
 
-import { Page, baseUrlFor, killBrowser, launchBrowser, startPreview, waitFor } from "./lib/cdp.mjs";
+import { Page, baseUrlFor, killBrowser, launchBrowser, sleep, startPreview, waitFor } from "./lib/cdp.mjs";
 
 /** REMATCH_BASE를 주면 배포된 주소를 그대로 검사한다. 주지 않으면 로컬 dist를 띄운다. */
 const REMOTE = process.env.REMATCH_BASE;
@@ -115,7 +115,25 @@ try {
     check(`${scenarioId} 리포트가 매치 코드를 남긴다`, report.includes("매치 코드"));
   }
 
-  // 5. 기록이 남는다
+  // 5. 저장소가 막혀도 방금 끝낸 경기의 리포트가 결과를 받는다.
+  //    예전에는 sessionStorage 쓰기 실패를 삼켜서 이미 플레이한 사용자에게 아직 플레이하지 않았다고 말했다.
+  await page.goto("#/match/kor-cze-2026");
+  await page.evaluate(`(() => {
+    const blocked = { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("blocked"); }, removeItem() { throw new Error("blocked"); }, clear() { throw new Error("blocked"); }, key() { throw new Error("blocked"); }, get length() { throw new Error("blocked"); } };
+    Object.defineProperty(window, "sessionStorage", { configurable: true, get: () => blocked });
+    Object.defineProperty(window, "localStorage", { configurable: true, get: () => blocked });
+    return true;
+  })()`);
+  await page.goto("#/match/kor-cze-2026");
+  await page.clickText("끝까지 건너뛰기");
+  await waitFor(() => page.evaluate('document.body.innerText.includes("경기가 끝났습니다")'), 15000, "저장소 차단 상태에서 경기가 끝나지 않았습니다");
+  await page.clickText("결과 리포트 보기");
+  await waitFor(() => page.evaluate('document.body.innerText.includes("나의 결과")'), 6000, "저장소 차단 상태에서 리포트가 결과를 받지 못했습니다");
+  check("저장소가 막혀도 리포트가 결과를 받는다", await page.evaluate('document.body.innerText.includes("나의 결과") && !document.body.innerText.includes("아직 이 시도의 결과가 없습니다")'));
+  await page.evaluate('(() => { window.location.reload(); return true; })()');
+  await sleep(1200);
+
+  // 6. 기록이 남는다
   await page.goto("#/hall-of-fame");
   const hall = await page.text();
   check("명예의 전당이 다섯 경기를 모두 기록한다", /기록 5건/.test(hall), hall.split("\n").slice(0, 6).join(" | "));

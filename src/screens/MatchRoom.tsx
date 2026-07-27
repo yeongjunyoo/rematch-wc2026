@@ -11,6 +11,7 @@ import type { FormationPreset, Intervention, MatchEvent, MatchState, Placement, 
 import { DATA_VERSION, ENGINE_VERSION } from "../domain/version";
 import { clockLabel, commentaryFor, isFeedWorthy, phaseLabel } from "../ui/commentary";
 import { defaultFormation, initialPlacements } from "../ui/squad";
+import { rememberResult } from "../ui/matchResult";
 import { matchHash, reportHash } from "../router";
 import { LivePitch } from "../ui/LivePitch";
 import type { LivePitchProps } from "../ui/LivePitch";
@@ -165,19 +166,15 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
     setPlaying(false);
     const terminal = runtime.state.terminal;
     const code = formatMatchCode(buildMatchCode(runtime.world));
-    try {
-      window.sessionStorage.setItem(`rematch:result:${scenario.id}:${attemptIndex}`, JSON.stringify({
-        state: runtime.state,
-        timeline: runtime.state.events,
-        // 리포트가 내 결정이 무엇이었는지를 말하려면 확정한 개입이 결과에 함께 실려야 한다.
-        // 이것이 없어 축구 팬 페르소나가 리포트에 내가 손흥민을 투입했다는 기록조차 없다고 했다.
-        interventions: runtime.interventions.slice(0, runtime.appliedCount),
-        matchCode: code,
-        attemptIndex,
-      }));
-    } catch {
-      // 세션 저장소가 막혀도 리포트는 "아직 플레이하지 않음"으로 정직하게 표시된다.
-    }
+    rememberResult(scenario.id, attemptIndex, {
+      state: runtime.state,
+      timeline: runtime.state.events,
+      // 리포트가 내 결정이 무엇이었는지를 말하려면 확정한 개입이 결과에 함께 실려야 한다.
+      // 이것이 없어 축구 팬 페르소나가 리포트에 내가 손흥민을 투입했다는 기록조차 없다고 했다.
+      interventions: runtime.interventions.slice(0, runtime.appliedCount),
+      matchCode: code,
+      attemptIndex,
+    });
     saveRecord({
       scenarioId: scenario.id,
       scenarioTitle: scenario.displayTitle,

@@ -19,14 +19,9 @@ h3 { font-size: 1.2rem; margin-bottom: 1rem; }
 .hook { max-width: 42rem; margin: 0; font-size: clamp(1.05rem, 3vw, 1.35rem); line-height: 1.6; }
 .eyebrow { color: #0d6261; font-size: 0.78rem; font-weight: 750; letter-spacing: 0.08em; margin-bottom: 0.75rem; }
 .section-heading, .screen-header { margin-bottom: 1.5rem; }
-.scenario-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-.scenario-card { display: flex; flex-direction: column; min-width: 0; padding: 1.35rem; border: 1px solid #cbd1cd; background: #fafbf8; border-radius: 0.8rem; }
-.scenario-card.featured { grid-column: span 2; border: 2px solid #0d6261; background: #eef6f4; }
-.featured-label { color: #0d6261; font-size: 0.78rem; font-weight: 750; margin-bottom: 0.75rem; }
 .scenario-meta, .match-meta { margin: 0 0 1rem; }
 .scenario-meta div, .match-meta div { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: 0.5rem; padding: 0.4rem 0; border-top: 1px solid #dde1de; }
 dt { color: #62706d; } dd { margin: 0; }
-.mission { font-weight: 700; line-height: 1.55; }
 .history-note { color: #50605c; font-size: 0.91rem; line-height: 1.6; }
 .button-link { display: inline-block; align-self: flex-start; margin-top: auto; padding: 0.65rem 0.9rem; border-radius: 0.4rem; background: #0d6261; color: #fff; font-weight: 700; text-decoration: none; }
 .page-footer { padding: 2.5rem 0 1rem; }
@@ -38,8 +33,6 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
 .help-section p { line-height: 1.7; }
 
 @media (max-width: 640px) {
-  .scenario-grid { grid-template-columns: 1fr; }
-  .scenario-card.featured { grid-column: auto; }
   .scenario-meta div, .match-meta div { grid-template-columns: 1fr; gap: 0.15rem; }
   .grade-list li { flex-direction: column; gap: 0.2rem; }
   th { width: 40%; }
