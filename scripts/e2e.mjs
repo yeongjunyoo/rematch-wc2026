@@ -58,6 +58,14 @@ try {
   check("일시정지할 수 있다", await page.clickText("일시정지"));
   check("더그아웃이 열린다", await page.clickText("전술 바꾸기"));
   await waitFor(() => page.evaluate(`document.querySelector(".dugout-overlay") !== null`), 5000, "더그아웃이 열리지 않았습니다");
+  // 탭 두 번으로 교체가 되는지. 드래그만 되던 시절 축구 팬 페르소나가 손흥민을 못 넣고 이탈했다.
+  check("벤치 선수를 눌러 고를 수 있다", await page.clickText("손흥민"));
+  await waitFor(() => page.evaluate('(document.querySelector(".dugout-notice")?.innerText ?? "").includes("자리를 피치에서 고르세요")'), 4000, "벤치 선택 안내가 뜨지 않았습니다");
+  check("교체 대상 안내가 뜬다", true);
+  check("피치 선수를 눌러 교체한다", await page.clickText("오현규"));
+  await waitFor(() => page.evaluate('(document.querySelector(".dugout-notice")?.innerText ?? "").includes("교체 카드를 사용했습니다")'), 4000, "교체가 성립하지 않았습니다");
+  check("손흥민이 실제로 투입된다", await page.evaluate('[...document.querySelectorAll(".player-token")].some((node) => node.innerText.includes("손흥민"))'));
+
   check("팀 지시 탭으로 이동한다", await page.clickText("팀 지시"));
   await page.evaluate(`(() => {
     const slider = document.querySelector(".directive-controls input[type=range]");

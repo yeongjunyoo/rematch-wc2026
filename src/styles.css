@@ -140,3 +140,7 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
   .kickoff-actions { display: grid; }
   .kickoff-primary, .kickoff-secondary { width: 100%; }
 }
+
+/* 탭 교체 경로의 상태 표시. 무엇을 골랐고 다음에 무엇을 눌러야 하는지가 보여야 한다. */
+.bench-card.is-selected { border: 2px solid #0d6261; background: #e5efed; font-weight: 700; }
+.player-token.is-swap-target { box-shadow: 0 0 0 3px #d8f0a4, 0 2px 8px rgba(0,0,0,.24); cursor: pointer; }

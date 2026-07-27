@@ -39,8 +39,12 @@ export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initi
   const [cardsUsed, setCardsUsed] = useState(0);
   const [substitutions, setSubstitutions] = useState<readonly { readonly outId: string; readonly inId: string }[]>([]);
   const [tab, setTab] = useState<"shape" | "directives">("shape");
+  // 벤치에서 고른 선수. 탭 두 번으로 교체하는 경로의 중간 상태다.
+  const [selectedBenchId, setSelectedBenchId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const pitchRef = useRef<HTMLDivElement>(null);
+  // 드래그가 끝나면 브라우저가 click을 한 번 더 쏜다. 그걸 탭으로 오인하면 교체가 두 번 일어난다.
+  const suppressClick = useRef(false);
   const drag = useDragController({ activationDistance: 6, touchActivationDelayMs: 180 });
   const players = useMemo(() => new Map([...squad.starters, ...squad.bench].map((player) => [player.id, player])), [squad]);
   const activePlayerId = drag.state.itemId?.replace("bench:", "") ?? null;
@@ -52,6 +56,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initi
     setDirectives(initialDirectives);
     setCardsUsed(0);
     setSubstitutions([]);
+    setSelectedBenchId(null);
     setNotice(null);
   }, [initialDirectives, initialFormation, initialPlacements, scenarioId]);
 
@@ -67,9 +72,57 @@ export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initi
     if (itemId !== undefined) drag.onPointerDown(event, itemId);
   };
 
+  /**
+   * 교체 실행. 드래그 경로와 탭 경로가 같은 함수를 부른다.
+   * 두 벌로 두면 한쪽만 규칙을 지키게 되고, 실제로 이 제품에서는 드래그 경로만 존재해서
+   * 자동 플레이테스트의 축구 팬이 손흥민을 세 번 고르고도 넣지 못한 채 이탈했다.
+   */
+  const runSubstitution = (outId: string, inId: string) => {
+    const result = substitute(placements, outId, inId, cardsUsed, 3);
+    if (!result.ok) {
+      setNotice(`교체할 수 없습니다. ${result.reason}`);
+      return;
+    }
+    setPlacements(result.placements);
+    setCardsUsed(result.cardsUsed);
+    setSubstitutions((current) => [...current, { outId, inId }]);
+    setSelectedBenchId(null);
+    const incoming = players.get(inId);
+    const outgoing = players.get(outId);
+    setNotice(`${incoming?.label ?? "선수"}를 넣고 ${outgoing?.label ?? "선수"}를 뺐습니다. 교체 카드를 사용했습니다.`);
+  };
+
+  /**
+   * 탭 경로. 벤치 선수를 누르면 고르고, 그 상태에서 피치 선수를 누르면 교체한다.
+   * 드래그만으로는 모바일과 키보드 사용자에게 교체 경로가 닫혀 있다.
+   */
+  const handleTap = (itemId: string) => {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
+    if (itemId.startsWith("bench:")) {
+      const benchId = itemId.slice(6);
+      if (selectedBenchId === benchId) {
+        setSelectedBenchId(null);
+        setNotice(null);
+        return;
+      }
+      setSelectedBenchId(benchId);
+      setNotice(`${players.get(benchId)?.label ?? "선수"}를 넣을 자리를 피치에서 고르세요.`);
+      return;
+    }
+    if (selectedBenchId === null) {
+      setNotice("먼저 벤치에서 넣을 선수를 고르세요.");
+      return;
+    }
+    runSubstitution(itemId, selectedBenchId);
+  };
+
   const finishDrag = (event: PointerEvent<HTMLElement>) => {
     const itemId = drag.state.itemId;
     const wasDragging = drag.state.phase === "dragging";
+    if (wasDragging) suppressClick.current = true;
     if (wasDragging && itemId !== null) {
       const point = pointFromEvent(event);
       if (point !== null) {
@@ -79,14 +132,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initi
           if (target === undefined) {
             setNotice("교체할 선수를 찾을 수 없습니다.");
           } else {
-            const incomingId = itemId.slice(6);
-            const result = substitute(placements, target.playerId, incomingId, cardsUsed, 3);
-            if (result.ok) {
-              setPlacements(result.placements);
-              setCardsUsed(result.cardsUsed);
-              setSubstitutions((current) => [...current, { outId: target.playerId, inId: incomingId }]);
-              setNotice("교체 카드를 사용했습니다.");
-            } else setNotice(`교체할 수 없습니다. ${result.reason}`);
+            runSubstitution(target.playerId, itemId.slice(6));
           }
         } else if (target !== undefined && target.playerId !== itemId) {
           setPlacements(swapPlacements(placements, itemId, target.playerId));
@@ -104,6 +150,12 @@ export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initi
   };
 
   const confirm = () => {
+    // 벤치 선수만 고르고 뺄 선수를 안 고른 채 확정하면, 사용자는 교체했다고 믿지만 아무 일도 안 일어난다.
+    // 자동 플레이테스트의 축구 팬이 정확히 이 상태로 경기를 끝까지 보고 배신감을 느꼈다.
+    if (selectedBenchId !== null) {
+      setNotice(`${players.get(selectedBenchId)?.label ?? "선수"}를 넣을 자리를 아직 고르지 않았습니다. 피치에서 뺄 선수를 누르거나 다시 눌러 선택을 해제하세요.`);
+      return;
+    }
     const intervention: Intervention = { tokenIndex, atMinute: 0, directives: clampDirectives(directives), formation, placements, substitutions };
     const previous = { directives: initialDirectives, formation: initialFormation, placements: initialPlacements };
     if (diffIntervention(previous, intervention).isNoOp) {
@@ -139,7 +191,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initi
             <button
               key={placement.playerId}
               type="button"
-              className={`player-token ${isActiveDrag ? "is-dragging" : ""}`}
+              className={`player-token ${isActiveDrag ? "is-dragging" : ""} ${selectedBenchId === null ? "" : "is-swap-target"}`}
               style={{
                 ...DRAG_HANDLE_STYLE,
                 top: `${placement.slot.x}%`,
@@ -147,7 +199,10 @@ export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initi
                 ...(followTransform === undefined ? {} : { transform: followTransform, zIndex: 3 }),
               }}
               data-drag-item={placement.playerId}
-              aria-label={`${player.label}, ${player.position}${player.confirmed ? "" : ", 재구성"}`}
+              onClick={() => handleTap(placement.playerId)}
+              aria-label={selectedBenchId === null
+                ? `${player.label}, ${player.position}${player.confirmed ? "" : ", 재구성"}`
+                : `${player.label}를 빼고 ${players.get(selectedBenchId)?.label ?? "선수"}를 넣기`}
             >
               <span>{player.label}</span>
               <small>{player.position}</small>
@@ -156,7 +211,20 @@ export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initi
         })}
       </div>
       <p className="fitness-legend"><i className="fitness-primary" />주 포지션 <i className="fitness-playable" />소화 가능 <i className="fitness-poor" />부적합</p>
-      <section className="bench" aria-label="벤치 선수" style={SCROLL_REGION_STYLE}><p>벤치, 교체 카드 {3 - cardsUsed}장</p><div className="bench-scroll">{squad.bench.filter((player) => !placements.some((placement) => placement.playerId === player.id)).map((player) => <button key={player.id} type="button" className="bench-card" style={DRAG_HANDLE_STYLE} data-drag-item={`bench:${player.id}`}>{player.label}<small>{player.position}{player.confirmed ? "" : " 재구성"}</small></button>)}</div></section>
+      <section className="bench" aria-label="벤치 선수" style={SCROLL_REGION_STYLE}><p>벤치, 교체 카드 {3 - cardsUsed}장{selectedBenchId === null ? ". 넣을 선수를 누르세요" : ". 이제 뺄 선수를 피치에서 누르세요"}</p><div className="bench-scroll">{squad.bench.filter((player) => !placements.some((placement) => placement.playerId === player.id)).map((player) => (
+        <button
+          key={player.id}
+          type="button"
+          className={`bench-card ${selectedBenchId === player.id ? "is-selected" : ""}`}
+          style={DRAG_HANDLE_STYLE}
+          data-drag-item={`bench:${player.id}`}
+          onClick={() => handleTap(`bench:${player.id}`)}
+          aria-pressed={selectedBenchId === player.id}
+          aria-label={`${player.label}, ${player.position}${player.confirmed ? "" : ", 재구성"}. 눌러서 넣을 선수로 고르기`}
+        >
+          {player.label}<small>{player.position}{player.confirmed ? "" : " 재구성"}</small>
+        </button>
+      ))}</div></section>
       {tab === "shape" ? <section className="dugout-controls" aria-label="포메이션 프리셋">{FORMATIONS.map((preset) => <button key={preset} type="button" className={formation === preset ? "is-selected" : ""} onClick={() => chooseFormation(preset)}>{preset}</button>)}</section> : <section className="directive-controls" aria-label="팀 지시">{DIRECTIVES.map(({ key, label, low, high }) => <label key={key}><span>{label}<b>{directives[key]}</b></span><small>{low} <em>{high}</em></small><input type="range" min="-2" max="2" step="1" value={directives[key]} onChange={(event) => setDirectives((current) => ({ ...current, [key]: Number(event.target.value) }))} /></label>)}</section>}
       {notice === null ? null : <p className="dugout-notice" role="status">{notice}</p>}
       <footer className="dugout-actions"><button type="button" className="text-button" onClick={onClose}>취소</button><button type="button" className="button-link" onClick={confirm}>개입 확정</button></footer>

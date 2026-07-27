@@ -1,4 +1,5 @@
 import type { MatchClock, MatchEvent, ScenarioDeclaration, Side } from "../domain/types";
+import { squadFor } from "./squad";
 
 /**
  * 경기 피드 문구의 단일 정본.
@@ -39,8 +40,15 @@ export function commentaryFor(event: MatchEvent, scenario: ScenarioDeclaration):
         : `${teamOf(event.side)}가 기회를 만들었지만 마무리가 빗나갑니다.`;
     case "card":
       return `${teamOf(event.side)} 경고.`;
-    case "substitution":
-      return `${us} 교체. 벤치가 움직였습니다.`;
+    case "substitution": {
+      // 누가 들어가고 누가 나갔는지가 이 제품의 서사다. "벤치가 움직였습니다"로는
+      // 손흥민을 넣었다는 사실이 피드에서 사라진다.
+      const roster = new Map([...squadFor(scenario.id).starters, ...squadFor(scenario.id).bench].map((player) => [player.id, player.label]));
+      const incoming = roster.get(event.inId);
+      const outgoing = roster.get(event.outId);
+      if (incoming === undefined || outgoing === undefined) return `${us} 교체.`;
+      return `교체. ${outgoing} 대신 ${incoming} 투입.`;
+    }
     case "intervention":
       return event.summary;
     case "aiCounter":
