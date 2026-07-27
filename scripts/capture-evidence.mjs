@@ -54,7 +54,7 @@ try {
 
   await page.clickText("취소");
   await sleep(200);
-  await page.clickText("끝까지 건너뛰기");
+  await page.skipToEnd();
   await waitFor(() => page.evaluate('document.body.innerText.includes("경기가 끝났습니다")'), 15000, "경기가 끝나지 않았습니다");
   await sleep(400);
 
@@ -78,6 +78,15 @@ try {
   const jpeg = await page.send("Page.captureScreenshot", { format: "jpeg", quality: 92, captureBeyondViewport: false });
   writeFileSync(resolve(OUT, "match-live.jpg"), Buffer.from(jpeg.data, "base64"));
   captured.push("match-live.jpg <- viewport jpeg");
+
+  // 화면 아트가 실제로 어떻게 보이는지 남긴다. 코드로 그린 그림은 코드를 읽어서는 확인할 수 없다.
+  for (const [hash, name] of [["#/", "home-art.jpg"], ["#/report/za-kor-2026", "report-art.jpg"]]) {
+    await page.goto(hash);
+    await sleep(700);
+    const shot = await page.send("Page.captureScreenshot", { format: "jpeg", quality: 92, captureBeyondViewport: false });
+    writeFileSync(resolve(OUT, name), Buffer.from(shot.data, "base64"));
+    captured.push(name + " <- viewport jpeg");
+  }
 
   for (const line of captured) console.log("captured " + line);
 } finally {
