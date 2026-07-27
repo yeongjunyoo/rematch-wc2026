@@ -11,7 +11,11 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "smoke": "node scripts/smoke.mjs",
+    "smoke:shots": "node scripts/smoke.mjs --shots",
+    "e2e": "node scripts/e2e.mjs",
+    "verify": "tsc --noEmit && vitest run && vite build && node scripts/smoke.mjs && node scripts/e2e.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

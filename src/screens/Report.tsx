@@ -1,12 +1,20 @@
 import { compareToHistory, evaluateGrade } from "../domain/outcome";
+import { bestGrade, loadRecords } from "../domain/records";
 import type { DecidedPhase, GradeRequirement, MatchEvent, MatchState, TerminalFacts } from "../domain/types";
 import { getScenario } from "../data/scenarios";
+import { clockLabel, commentaryFor, isHighlight } from "../ui/commentary";
+import { matchHash } from "../router";
 
 interface ReportProps {
   scenarioId: string;
+  attemptIndex: number;
 }
 
-type StoredResult = { readonly state: MatchState; readonly timeline: readonly MatchEvent[] };
+type StoredResult = {
+  readonly state: MatchState;
+  readonly timeline: readonly MatchEvent[];
+  readonly matchCode?: string;
+};
 
 const phaseLabels: Record<DecidedPhase, string> = {
   regulation: "정규시간",
@@ -29,23 +37,9 @@ function resultLabel(terminal: TerminalFacts): string {
   return terminal.userResult === "win" ? "우리가 이겼습니다" : terminal.userResult === "draw" ? "비겼습니다" : "우리가 졌습니다";
 }
 
-function eventLabel(event: MatchEvent): string {
-  const time = event.clock.phase === "shootout" ? `${event.clock.shootoutRound ?? 1}번 킥` : `${event.clock.absoluteMinute}분`;
-  switch (event.type) {
-    case "goal": return `${time} ${event.side === "user" ? "우리 팀" : "상대"} 득점`;
-    case "card": return `${time} ${event.side === "user" ? "우리 팀" : "상대"} 카드`;
-    case "phaseChange": return `${time} ${event.to === "extraTime" ? "연장전 시작" : event.to === "shootout" ? "승부차기 시작" : "경기 종료"}`;
-    case "penaltyAttempt": return `${time} ${event.side === "user" ? "우리 팀" : "상대"} 킥 ${event.result === "scored" ? "성공" : "실패"}`;
-    case "aiCounter": return `${time} 상대 반격, ${event.exposedWeakness} 노출`;
-    case "intervention": return `${time} ${event.summary}`;
-    case "substitution": return `${time} 우리 팀 교체`;
-    case "chance": return `${time} ${event.side === "user" ? "우리 팀" : "상대"} 찬스`;
-  }
-}
-
-function loadResult(scenarioId: string): StoredResult | null {
+function loadResult(scenarioId: string, attemptIndex: number): StoredResult | null {
   try {
-    const raw = sessionStorage.getItem(`rematch:result:${scenarioId}`);
+    const raw = window.sessionStorage.getItem(`rematch:result:${scenarioId}:${attemptIndex}`);
     if (raw === null) return null;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null || !("state" in parsed) || !("timeline" in parsed)) return null;
@@ -67,29 +61,75 @@ function ResultRows({ terminal, scenarioId }: { readonly terminal: TerminalFacts
   </tbody></table>;
 }
 
-export function Report({ scenarioId }: ReportProps) {
+export function Report({ scenarioId, attemptIndex }: ReportProps) {
   const scenario = getScenario(scenarioId);
   if (!scenario) {
     return <main className="page narrow-page"><h1>시나리오를 찾을 수 없습니다.</h1><a href="#/">홈으로 돌아가기</a></main>;
   }
-  const result = loadResult(scenarioId);
+
+  const result = loadResult(scenarioId, attemptIndex);
   const mine = result?.state.terminal ?? null;
   const comparison = mine === null ? null : compareToHistory(scenario.actualTerminal, mine);
   const grade = mine === null ? null : evaluateGrade(scenario.mission, mine);
-  const highlights = result?.timeline.filter((event) => event.type === "goal" || event.type === "card" || event.type === "phaseChange" || event.type === "penaltyAttempt" || event.type === "aiCounter") ?? [];
+  const highlights = result?.timeline.filter(isHighlight) ?? [];
+  const previousBest = bestGrade(loadRecords(), scenarioId);
+  const nextAttempt = (attemptIndex + 1) % scenario.publishedSeedDeck.length;
 
   return (
     <main className="page">
-      <header className="screen-header"><p className="eyebrow">결과 리포트</p><h1>{scenario.displayTitle}</h1></header>
-      <section className="report-section" aria-labelledby="actual-result"><h2 id="actual-result">실제 역사 결과</h2><ResultRows terminal={scenario.actualTerminal} scenarioId={scenarioId} /></section>
-      <section className="report-section"><h2>나의 결과</h2>{mine === null ? <p>아직 플레이하지 않음</p> : <>
-        <ResultRows terminal={mine} scenarioId={scenarioId} />
-        <p className="result-headline">{comparison!.headline}</p>
-        <p className="grade-result" aria-label={`등급 ${grade}`}>{grade} 등급</p>
-      </>}</section>
-      {mine === null ? null : <section className="report-section"><h2>하이라이트</h2><ol className="event-feed">{highlights.map((event, index) => <li key={`${event.type}-${index}`}>{eventLabel(event)}</li>)}</ol></section>}
-      <section className="report-section"><h2>미션과 등급</h2><p>{scenario.mission.brief}</p><ul className="grade-list">{scenario.mission.gradeCutlines.map((cutline) => <li key={cutline.grade}><strong>{cutline.grade} 등급</strong><span>{requirementLabel(cutline.requirement)}</span></li>)}</ul></section>
-      <nav className="screen-nav" aria-label="화면 이동"><a className="button-link" href={`#/match/${scenario.id}`}>매치룸으로 돌아가기</a><a href="#/">홈으로 돌아가기</a></nav>
+      <header className="screen-header">
+        <p className="eyebrow">결과 리포트, {attemptIndex + 1}번째 시도</p>
+        <h1>{scenario.displayTitle}</h1>
+      </header>
+
+      {mine === null ? (
+        <section className="report-section">
+          <h2>아직 이 시도의 결과가 없습니다</h2>
+          <p>매치룸에서 경기를 끝까지 진행하면 여기에 결과가 남습니다. 결과는 브라우저 세션에만 저장되므로 탭을 닫으면 사라집니다.</p>
+          <nav className="screen-nav"><a className="button-link" href={matchHash(scenarioId, attemptIndex)}>매치룸으로 가기</a></nav>
+        </section>
+      ) : (
+        <section className="report-section">
+          <h2>나의 결과</h2>
+          <ResultRows terminal={mine} scenarioId={scenarioId} />
+          <p className="result-headline">{comparison!.headline}</p>
+          <p className="grade-result" aria-label={`등급 ${grade}`}>{grade} 등급</p>
+          {previousBest === null || previousBest === grade ? null : <p className="best-grade">이 경기에서 남긴 최고 등급은 {previousBest}입니다.</p>}
+          {result?.matchCode === undefined ? null : (
+            <p className="match-code-line">매치 코드 <code className="match-code">{result.matchCode}</code></p>
+          )}
+        </section>
+      )}
+
+      <section className="report-section" aria-labelledby="actual-result">
+        <h2 id="actual-result">실제 역사 결과</h2>
+        <ResultRows terminal={scenario.actualTerminal} scenarioId={scenarioId} />
+        <p className="history-note">{scenario.historyNote}</p>
+      </section>
+
+      {mine === null ? null : (
+        <section className="report-section">
+          <h2>하이라이트</h2>
+          <ol className="event-feed">{highlights.map((event, index) => (
+            <li key={`${event.type}-${index}`}><b>{clockLabel(event.clock)}</b> {commentaryFor(event, scenario)}</li>
+          ))}</ol>
+        </section>
+      )}
+
+      <section className="report-section">
+        <h2>미션과 등급</h2>
+        <p>{scenario.mission.brief}</p>
+        <ul className="grade-list">{scenario.mission.gradeCutlines.map((cutline) => (
+          <li key={cutline.grade}><strong>{cutline.grade} 등급</strong><span>{requirementLabel(cutline.requirement)}</span></li>
+        ))}</ul>
+      </section>
+
+      <nav className="screen-nav" aria-label="화면 이동">
+        <a className="button-link" href={matchHash(scenarioId, nextAttempt)}>새 리매치 시작</a>
+        <a href={matchHash(scenarioId, attemptIndex)}>같은 경기 다시 보기</a>
+        <a href="#/hall-of-fame">명예의 전당</a>
+        <a href="#/">홈으로 돌아가기</a>
+      </nav>
     </main>
   );
 }

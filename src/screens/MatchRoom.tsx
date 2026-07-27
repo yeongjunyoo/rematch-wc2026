@@ -1,52 +1,47 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getScenario } from "../data/scenarios";
-import { deriveWorldSeed } from "../domain/rng";
-import { simulateToTerminal } from "../domain/simulate";
+import { saveRecord } from "../domain/records";
+import { buildMatchCode, deriveWorldSeed, formatMatchCode } from "../domain/rng";
+import { commitIntervention, createRuntime, isFinished, runToTerminal, tickRuntime } from "../domain/simulate";
+import type { MatchRuntime } from "../domain/simulate";
+import { evaluateGrade } from "../domain/outcome";
 import { NEUTRAL_DIRECTIVES } from "../domain/types";
-import type { FormationPreset, Intervention, MatchEvent, MatchState, Placement, TacticalDirectives } from "../domain/types";
+import type { FormationPreset, Intervention, MatchEvent, MatchState, Placement, ScenarioDeclaration, TacticalDirectives } from "../domain/types";
+import { DATA_VERSION, ENGINE_VERSION } from "../domain/version";
+import { clockLabel, commentaryFor, isFeedWorthy, phaseLabel } from "../ui/commentary";
 import { defaultFormation, initialPlacements } from "../ui/squad";
+import { matchHash, reportHash } from "../router";
 import { Dugout } from "./Dugout";
 
 interface MatchRoomProps {
   scenarioId: string;
+  attemptIndex: number;
 }
 
-function formatDescription(extraTimeRule: "none" | "fullExtraTime" | "suddenDeath", shootoutOnTie: boolean): string {
-  const extraTime = extraTimeRule === "none"
+/** 1배속에서 경기 1분이 흐르는 실제 시간. 한 경기가 몇 분 안에 끝나야 심사자가 끝까지 본다. */
+const TICK_BASE_MS = 720;
+const SPEEDS = [1, 2, 4] as const;
+type Speed = (typeof SPEEDS)[number];
+
+/** 골과 상대 반격은 잠깐 멈춰 세워야 "내 결정이 만든 장면"으로 읽힌다. */
+const BEAT_HOLD_MS = 1700;
+
+interface Beat {
+  readonly tone: "goal" | "concede" | "counter";
+  readonly headline: string;
+  readonly detail: string;
+}
+
+function formatDescription(scenario: ScenarioDeclaration): string {
+  const extraTime = scenario.format.extraTimeRule === "none"
     ? "연장전 없이 정규시간으로 끝납니다"
-    : extraTimeRule === "suddenDeath"
+    : scenario.format.extraTimeRule === "suddenDeath"
       ? "연장전은 골든골 방식입니다"
       : "동점이면 연장전 30분을 치릅니다";
-  return `${extraTime}. ${shootoutOnTie ? "연장전 뒤 동점이면 승부차기를 합니다" : "승부차기는 없습니다"}.`;
+  return `${extraTime}. ${scenario.format.shootoutOnTie ? "연장전 뒤 동점이면 승부차기를 합니다" : "승부차기는 없습니다"}.`;
 }
 
-function eventDescription(event: MatchEvent): string {
-  const minute = event.clock.phase === "shootout" ? `${event.clock.shootoutRound ?? 1}번 킥` : `${event.clock.absoluteMinute}분`;
-  switch (event.type) {
-    case "goal": return `${minute} ${event.side === "user" ? "우리 팀" : "상대"} 득점`;
-    case "card": return `${minute} ${event.side === "user" ? "우리 팀" : "상대"} 카드`;
-    case "phaseChange": return `${minute} ${event.to === "extraTime" ? "연장전 시작" : event.to === "shootout" ? "승부차기 시작" : "경기 종료"}`;
-    case "penaltyAttempt": return `${minute} ${event.side === "user" ? "우리 팀" : "상대"} 승부차기 ${event.result === "scored" ? "성공" : "실패"}`;
-    case "aiCounter": return `${minute} 상대 반격: ${event.counteredWhat}, ${event.exposedWeakness} 노출`;
-    case "intervention": return `${minute} ${event.summary}`;
-    case "substitution": return `${minute} 우리 팀 교체`;
-    case "chance": return `${minute} ${event.side === "user" ? "우리 팀" : "상대"} 찬스 ${event.converted ? "득점" : "무산"}`;
-  }
-}
-
-function Pitch() {
-  return (
-    <svg className="pitch" viewBox="0 0 100 64" role="img" aria-label="경기 진행 전술판">
-      <rect x="1" y="1" width="98" height="62" rx="2" className="pitch-grass" />
-      <rect x="1" y="1" width="98" height="62" rx="2" className="pitch-line" />
-      <path d="M50 1v62M1 20h16v24H1M99 20H83v24h16M1 27h6v10H1M99 27h-6v10h6" className="pitch-line" />
-      <circle cx="50" cy="32" r="9" className="pitch-line" />
-      <circle cx="50" cy="32" r=".8" className="pitch-line fill-line" />
-    </svg>
-  );
-}
-
-function initialState(scenario: NonNullable<ReturnType<typeof getScenario>>): MatchState {
+function initialState(scenario: ScenarioDeclaration): MatchState {
   return {
     clock: { phase: "regulation", minute: scenario.interventionStartMinute, absoluteMinute: scenario.interventionStartMinute, shootoutRound: null },
     userGoals: scenario.startingUserGoals,
@@ -61,28 +56,57 @@ function initialState(scenario: NonNullable<ReturnType<typeof getScenario>>): Ma
   };
 }
 
-export function MatchRoom({ scenarioId }: MatchRoomProps) {
+function freshRuntime(scenario: ScenarioDeclaration, attemptIndex: number): MatchRuntime {
+  const world = deriveWorldSeed(scenario.id, attemptIndex, scenario.publishedSeedDeck, ENGINE_VERSION, DATA_VERSION);
+  return createRuntime(scenario, world, initialState(scenario));
+}
+
+function Pitch({ userGoals, opponentGoals }: { readonly userGoals: number; readonly opponentGoals: number }) {
+  return (
+    <svg className="pitch" viewBox="0 0 100 64" role="img" aria-label={`경기 진행 전술판, 현재 ${userGoals}대${opponentGoals}`}>
+      <rect x="1" y="1" width="98" height="62" rx="2" className="pitch-grass" />
+      <rect x="1" y="1" width="98" height="62" rx="2" className="pitch-line" />
+      <path d="M50 1v62M1 20h16v24H1M99 20H83v24h16M1 27h6v10H1M99 27h-6v10h6" className="pitch-line" />
+      <circle cx="50" cy="32" r="9" className="pitch-line" />
+      <circle cx="50" cy="32" r=".8" className="pitch-line fill-line" />
+    </svg>
+  );
+}
+
+export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
   const scenario = getScenario(scenarioId);
-  const [tokensRemaining, setTokensRemaining] = useState(3);
+  const [runtime, setRuntime] = useState<MatchRuntime | null>(() => scenario === undefined ? null : freshRuntime(scenario, attemptIndex));
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState<Speed>(1);
+  const [beat, setBeat] = useState<Beat | null>(null);
   const [formation, setFormation] = useState<FormationPreset>(() => defaultFormation(scenarioId));
   const [placements, setPlacements] = useState<readonly Placement[]>(() => scenario === undefined ? [] : initialPlacements(scenarioId));
   const [directives, setDirectives] = useState<TacticalDirectives>(NEUTRAL_DIRECTIVES);
-  const [interventions, setInterventions] = useState<readonly Intervention[]>([]);
-  const [timeline, setTimeline] = useState<readonly MatchEvent[]>([]);
   const [isDugoutOpen, setDugoutOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const seenEventCount = useRef(0);
+  const resumeAfterBeat = useRef(false);
 
+  const matchCode = useMemo(
+    () => runtime === null ? "" : formatMatchCode(buildMatchCode(runtime.world)),
+    [runtime],
+  );
+
+  // 시나리오나 시도가 바뀌면 이전 경기의 흔적을 남기지 않는다.
   useEffect(() => {
     if (scenario === undefined) return;
-    setTokensRemaining(3);
-    setFormation(defaultFormation(scenarioId));
-    setPlacements(initialPlacements(scenarioId));
+    setRuntime(freshRuntime(scenario, attemptIndex));
+    setPlaying(false);
+    setSpeed(1);
+    setBeat(null);
+    setFormation(defaultFormation(scenario.id));
+    setPlacements(initialPlacements(scenario.id));
     setDirectives(NEUTRAL_DIRECTIVES);
-    setInterventions([]);
-    setTimeline([]);
     setDugoutOpen(false);
     setNotice(null);
-  }, [scenario, scenarioId]);
+    seenEventCount.current = 0;
+    resumeAfterBeat.current = false;
+  }, [attemptIndex, scenario]);
 
   useEffect(() => {
     if (!isDugoutOpen) return undefined;
@@ -91,69 +115,239 @@ export function MatchRoom({ scenarioId }: MatchRoomProps) {
     return () => { document.body.style.overflow = previousOverflow; };
   }, [isDugoutOpen]);
 
-  if (!scenario) {
+  const finished = runtime !== null && isFinished(runtime);
+
+  // 경기 시계. 더그아웃이 열려 있거나 연출이 진행 중이면 시간은 흐르지 않는다.
+  useEffect(() => {
+    if (runtime === null || finished || !playing || isDugoutOpen || beat !== null) return undefined;
+    const interval = window.setInterval(
+      () => setRuntime((current) => current === null || isFinished(current) ? current : tickRuntime(current)),
+      Math.round(TICK_BASE_MS / speed),
+    );
+    return () => window.clearInterval(interval);
+  }, [beat, finished, isDugoutOpen, playing, runtime === null, speed]);
+
+  // 새로 생긴 사건 중 멈춰 세울 것을 고른다.
+  useEffect(() => {
+    if (runtime === null || scenario === undefined) return;
+    const events = runtime.state.events;
+    if (events.length <= seenEventCount.current) {
+      seenEventCount.current = events.length;
+      return;
+    }
+    const fresh = events.slice(seenEventCount.current);
+    seenEventCount.current = events.length;
+    const next = beatFor(fresh, scenario);
+    if (next === null) return;
+    resumeAfterBeat.current = playing;
+    setBeat(next);
+  }, [beat, playing, runtime, scenario]);
+
+  useEffect(() => {
+    if (beat === null) return undefined;
+    const timer = window.setTimeout(() => {
+      setBeat(null);
+      if (resumeAfterBeat.current) setPlaying(true);
+    }, BEAT_HOLD_MS);
+    return () => window.clearTimeout(timer);
+  }, [beat]);
+
+  // 종료되면 결과를 넘기고 기록을 남긴다.
+  useEffect(() => {
+    if (runtime === null || scenario === undefined || runtime.state.terminal === null) return;
+    setPlaying(false);
+    const terminal = runtime.state.terminal;
+    const code = formatMatchCode(buildMatchCode(runtime.world));
+    try {
+      window.sessionStorage.setItem(`rematch:result:${scenario.id}:${attemptIndex}`, JSON.stringify({
+        state: runtime.state,
+        timeline: runtime.state.events,
+        matchCode: code,
+        attemptIndex,
+      }));
+    } catch {
+      // 세션 저장소가 막혀도 리포트는 "아직 플레이하지 않음"으로 정직하게 표시된다.
+    }
+    saveRecord({
+      scenarioId: scenario.id,
+      scenarioTitle: scenario.displayTitle,
+      attemptIndex,
+      matchCode: code,
+      grade: evaluateGrade(scenario.mission, terminal),
+      userGoals: terminal.userGoals,
+      opponentGoals: terminal.opponentGoals,
+      decidedPhase: terminal.decidedPhase,
+      derivedAchieved: terminal.derivedOutcome === null ? null : terminal.derivedOutcome.achieved,
+      savedAt: Date.now(),
+    });
+  }, [attemptIndex, runtime, scenario]);
+
+  if (scenario === undefined || runtime === null) {
     return <main className="page narrow-page"><h1>시나리오를 찾을 수 없습니다.</h1><a href="#/">홈으로 돌아가기</a></main>;
   }
 
+  const pendingCount = runtime.interventions.length - runtime.appliedCount;
+  const tokensRemaining = Math.max(0, runtime.state.tokensRemaining - pendingCount);
+  const started = runtime.state.clock.absoluteMinute > scenario.interventionStartMinute || runtime.state.events.length > 0;
+  const feed = runtime.state.events.filter(isFeedWorthy).slice(-14).reverse();
+
   const openDugout = () => {
+    if (finished) return;
     if (tokensRemaining === 0) {
-      setNotice("개입 토큰을 모두 사용했습니다. 현재 전술로 경기를 이어가세요.");
+      setNotice("개입 토큰을 모두 썼습니다. 지금 전술로 남은 시간을 버텨야 합니다.");
       return;
     }
+    setPlaying(false);
     setNotice(null);
     setDugoutOpen(true);
   };
 
   const applyIntervention = (intervention: Intervention) => {
-    const scheduled = { ...intervention, atMinute: scenario.interventionStartMinute };
-    setFormation(scheduled.formation);
-    setPlacements(scheduled.placements);
-    setDirectives(scheduled.directives);
-    setInterventions((current) => [...current, scheduled]);
-    setTokensRemaining((current) => current - 1);
+    setFormation(intervention.formation);
+    setPlacements(intervention.placements);
+    setDirectives(intervention.directives);
+    setRuntime((current) => current === null ? current : commitIntervention(current, { ...intervention, tokenIndex: 3 - tokensRemaining }));
     setDugoutOpen(false);
-    setNotice(`개입 ${scheduled.tokenIndex + 1}을 적용했습니다. 진행을 눌러 종료까지 확인하세요.`);
+    setNotice(`${runtime.state.clock.absoluteMinute}분에 개입을 확정했습니다. 상대 벤치는 잠시 뒤에야 이 변화를 알아챕니다.`);
+    setPlaying(true);
   };
 
-  const progressMatch = () => {
-    const world = deriveWorldSeed(scenario.id, 0, scenario.publishedSeedDeck, "d2", "d2");
-    const result = simulateToTerminal({ scenario, world, interventions, startState: initialState(scenario) });
-    sessionStorage.setItem(`rematch:result:${scenario.id}`, JSON.stringify({ state: result.state, timeline: result.timeline }));
-    setTimeline(result.timeline);
-    setNotice("경기가 종료되었습니다. 결과 리포트로 이동합니다.");
-    window.setTimeout(() => { window.location.hash = `#/report/${scenario.id}`; }, 600);
+  const skipToEnd = () => {
+    setPlaying(false);
+    setBeat(null);
+    resumeAfterBeat.current = false;
+    setRuntime((current) => current === null ? current : runToTerminal(current));
+  };
+
+  const restart = () => {
+    const nextAttempt = (attemptIndex + 1) % scenario.publishedSeedDeck.length;
+    window.location.hash = matchHash(scenario.id, nextAttempt);
   };
 
   return (
     <main className="page">
-      <p className="shell-notice">전술 개입을 확정한 뒤 진행을 누르면 결정론적 시뮬레이션이 종료까지 이어집니다.</p>
       <header className="screen-header">
-        <p className="eyebrow">매치룸</p>
+        <p className="eyebrow">매치룸, {attemptIndex + 1}번째 시도</p>
         <h1>{scenario.displayTitle}</h1>
       </header>
+
       <section className="match-layout">
         <div className="match-details">
-          <div className="scoreboard" aria-label="이어받는 시점의 스코어">
-            <span>{scenario.userTeam.displayName}</span><strong>{scenario.startingUserGoals} : {scenario.startingOpponentGoals}</strong><span>{scenario.opponentTeam.displayName}</span>
+          <div className={`scoreboard ${beat === null ? "" : `is-${beat.tone}`}`} aria-label="현재 스코어">
+            <span>{scenario.userTeam.displayName}</span>
+            <strong>{runtime.state.userGoals} : {runtime.state.opponentGoals}</strong>
+            <span>{scenario.opponentTeam.displayName}</span>
           </div>
+
+          <p className="match-clock" role="status">
+            <b>{clockLabel(runtime.state.clock)}</b>
+            <span>{phaseLabel(runtime.state.clock)}</span>
+          </p>
+
+          <div className="transport" role="group" aria-label="경기 진행 제어">
+            <button type="button" className="transport-main" onClick={() => setPlaying((current) => !current)} disabled={finished}>
+              {playing ? "일시정지" : started ? "재개" : "경기 재개"}
+            </button>
+            <div className="speed-group" role="group" aria-label="재생 속도">
+              {SPEEDS.map((option) => (
+                <button key={option} type="button" className={option === speed ? "is-selected" : ""} aria-pressed={option === speed} onClick={() => setSpeed(option)}>{option}배속</button>
+              ))}
+            </div>
+            <button type="button" className="text-button" onClick={skipToEnd} disabled={finished}>끝까지 건너뛰기</button>
+          </div>
+
+          <div className="token-row" aria-label={`개입 토큰 ${tokensRemaining}개 남음`}>
+            <span>개입 토큰</span>
+            {[1, 2, 3].map((token) => <b key={token} className={token <= tokensRemaining ? "" : "is-spent"}>{token}</b>)}
+          </div>
+          <button type="button" className="button-link intervention-button" onClick={openDugout} disabled={finished}>더그아웃 열기</button>
+
           <dl className="match-meta">
-            <div><dt>현재 시간</dt><dd>{scenario.interventionStartMinute}분</dd></div>
-            <div><dt>경기 형식</dt><dd>{formatDescription(scenario.format.extraTimeRule, scenario.format.shootoutOnTie)}</dd></div>
+            <div><dt>이어받은 시점</dt><dd>{scenario.interventionStartMinute}분, {scenario.startingUserGoals}대{scenario.startingOpponentGoals}</dd></div>
+            <div><dt>경기 형식</dt><dd>{formatDescription(scenario)}</dd></div>
             <div><dt>현재 포메이션</dt><dd>{formation}</dd></div>
+            <div><dt>매치 코드</dt><dd><code className="match-code">{matchCode}</code></dd></div>
           </dl>
-          <div className="token-row" aria-label={`개입 토큰 ${tokensRemaining}개 남음`}><span>개입 토큰</span>{[1, 2, 3].map((token) => <b key={token} className={token <= tokensRemaining ? "" : "is-spent"}>{token}</b>)}</div>
-          <button type="button" className="button-link intervention-button" onClick={openDugout}>개입</button>
-          <button type="button" className="button-link intervention-button" onClick={progressMatch}>진행</button>
+
           {notice === null ? null : <p className="match-notice" role="status">{notice}</p>}
         </div>
-        <Pitch />
+
+        <div className="match-stage">
+          <Pitch userGoals={runtime.state.userGoals} opponentGoals={runtime.state.opponentGoals} />
+          {beat === null ? null : (
+            <div className={`beat-overlay is-${beat.tone}`} role="status">
+              <strong>{beat.headline}</strong>
+              <span>{beat.detail}</span>
+            </div>
+          )}
+          {!started && !finished ? (
+            <div className="kickoff-overlay">
+              <p className="eyebrow">지금부터 당신이 감독입니다</p>
+              <strong>{scenario.mission.brief}</strong>
+              <span>재개를 누르면 {scenario.interventionStartMinute}분부터 경기가 다시 흐릅니다. 언제든 멈추고 더그아웃을 열 수 있습니다.</span>
+            </div>
+          ) : null}
+          {!finished ? null : (
+            <div className="beat-overlay is-final" role="status">
+              <strong>경기 종료</strong>
+              <span>{runtime.state.userGoals} 대 {runtime.state.opponentGoals}</span>
+            </div>
+          )}
+        </div>
       </section>
-      {timeline.length === 0 ? null : <section className="report-section" aria-live="polite"><h2>진행 해설</h2><ol className="event-feed">{timeline.filter((event) => event.type !== "chance" || event.converted).map((event, index) => <li key={`${event.type}-${index}`}>{eventDescription(event)}</li>)}</ol></section>}
+
+      {!finished ? null : (
+        <section className="report-section">
+          <h2>경기가 끝났습니다</h2>
+          <nav className="screen-nav" aria-label="종료 후 이동">
+            <a className="button-link" href={reportHash(scenario.id, attemptIndex)}>결과 리포트 보기</a>
+            <button type="button" className="text-button" onClick={restart}>새 리매치 시작</button>
+          </nav>
+        </section>
+      )}
+
+      <section className="report-section" aria-live="polite">
+        <h2>경기 피드</h2>
+        {feed.length === 0
+          ? <p className="feed-empty">아직 기록된 장면이 없습니다. 경기를 재개하세요.</p>
+          : <ol className="event-feed">{feed.map((event, index) => (
+            <li key={`${runtime.state.events.length - index}`} className={`feed-${event.type}`}>
+              <b>{clockLabel(event.clock)}</b> {commentaryFor(event, scenario)}
+            </li>
+          ))}</ol>}
+      </section>
+
       <nav className="screen-nav" aria-label="화면 이동">
-        <a className="button-link" href={`#/report/${scenario.id}`}>결과 리포트</a>
+        <a href={reportHash(scenario.id, attemptIndex)}>결과 리포트</a>
         <a href="#/">홈으로 돌아가기</a>
       </nav>
-      {!isDugoutOpen ? null : <Dugout scenarioId={scenarioId} tokenIndex={3 - tokensRemaining} initialFormation={formation} initialPlacements={placements} initialDirectives={directives} onConfirm={applyIntervention} onClose={() => setDugoutOpen(false)} />}
+
+      {!isDugoutOpen ? null : (
+        <Dugout
+          scenarioId={scenarioId}
+          tokenIndex={3 - tokensRemaining}
+          minute={runtime.state.clock.absoluteMinute}
+          initialFormation={formation}
+          initialPlacements={placements}
+          initialDirectives={directives}
+          onConfirm={applyIntervention}
+          onClose={() => setDugoutOpen(false)}
+        />
+      )}
     </main>
   );
+}
+
+function beatFor(fresh: readonly MatchEvent[], scenario: ScenarioDeclaration): Beat | null {
+  const goal = fresh.find((event) => event.type === "goal");
+  if (goal !== undefined && goal.type === "goal") {
+    return goal.side === "user"
+      ? { tone: "goal", headline: "골", detail: `${scenario.userTeam.displayName}가 흐름을 뒤집습니다.` }
+      : { tone: "concede", headline: "실점", detail: `${scenario.opponentTeam.displayName}가 앞서갑니다.` };
+  }
+  const counter = fresh.find((event) => event.type === "aiCounter");
+  if (counter !== undefined && counter.type === "aiCounter") {
+    return { tone: "counter", headline: "상대 벤치가 움직입니다", detail: `${counter.counteredWhat}. 대신 ${counter.exposedWeakness}가 열립니다.` };
+  }
+  return null;
 }

@@ -1,10 +1,40 @@
+import { DATA_VERSION, ENGINE_VERSION } from "../domain/version";
+
 export function Help() {
   return (
     <main className="page narrow-page">
       <header className="screen-header"><p className="eyebrow">도움말</p><h1>REMATCH 안내</h1></header>
-      <section className="help-section"><h2>조작 예정</h2><p>다음 단계에서 전술과 개입 토큰을 조정하고 경기를 진행할 수 있습니다. 현재는 시나리오와 경기 형식을 살펴보는 화면입니다.</p></section>
-      <section className="help-section"><h2>데이터 출처와 라이선스</h2><p>경기 결과, 일정, 선수명 같은 사실 정보만 사용했으며 공개 보도와 공개 기록을 참고해 직접 재구성했습니다.</p><p>FIFA와 각 연맹과 구단의 엠블럼, 선수 사진, 중계 영상, 공식 폰트는 사용하지 않습니다. 국기와 유니폼 표현은 자체 제작한 인라인 SVG 도형만 사용합니다.</p><p>모든 시나리오는 실존 인물과 팀을 존중하고 헌정하는 톤으로 작성합니다.</p></section>
-      <a className="button-link" href="#/">홈으로 돌아가기</a>
+
+      <section className="help-section">
+        <h2>어떻게 하는 경기인가</h2>
+        <p>실제 월드컵 경기의 결정적 순간에서 벤치를 이어받습니다. 경기 시계는 그 시점부터 다시 흐르고, 당신에게는 개입 토큰 세 개와 교체 카드 세 장이 있습니다.</p>
+        <p>언제든 일시정지하고 더그아웃을 열어 선수를 옮기고, 포메이션을 바꾸고, 다섯 가지 팀 지시를 조정하세요. 아무것도 바꾸지 않고 확정하면 토큰은 소모되지 않습니다.</p>
+        <p>상대 벤치도 감독입니다. 다만 당신의 변화를 즉시 알지 못하고 몇 분 뒤에야 관측하며, 반격 예산과 쿨다운이 있습니다. 모든 반격은 무언가를 막는 대신 다른 곳을 엽니다.</p>
+      </section>
+
+      <section className="help-section">
+        <h2>같은 경기와 새 리매치</h2>
+        <p>경기 결과는 시드로 결정됩니다. 매치 코드가 같으면 같은 경기가 재현되고, 새 리매치는 공개된 시드 덱의 다음 번호로만 전진합니다. 무작위로 새 시드를 뽑지 않으므로 결과가 마음에 들 때까지 몰래 다시 굴리는 일이 없습니다.</p>
+        <p>전술을 한 칸 바꿔도 경기의 외생 흐름은 그대로입니다. 그래서 결과가 달라졌다면 그것은 운이 아니라 당신의 결정입니다.</p>
+        <p>현재 엔진 버전 {ENGINE_VERSION}, 데이터 버전 {DATA_VERSION}.</p>
+      </section>
+
+      <section className="help-section">
+        <h2>저장되는 것</h2>
+        <p>기록은 이 브라우저에만 남습니다. 회원가입도 서버도 결제도 없습니다. 명예의 전당에서 언제든 전체 삭제할 수 있고, 사생활 보호 모드처럼 저장소가 막힌 환경에서는 기록만 남지 않을 뿐 경기는 그대로 동작합니다.</p>
+      </section>
+
+      <section className="help-section">
+        <h2>데이터 출처와 라이선스</h2>
+        <p>경기 결과, 일정, 선수명 같은 사실 정보만 사용했으며 공개 보도와 공개 기록을 참고해 직접 재구성했습니다.</p>
+        <p>FIFA와 각 연맹과 구단의 엠블럼, 선수 사진, 중계 영상, 공식 폰트는 사용하지 않습니다. 국기와 유니폼 표현은 자체 제작한 인라인 SVG 도형만 사용합니다.</p>
+        <p>모든 시나리오는 실존 인물과 팀을 존중하고 헌정하는 톤으로 작성합니다. 확인되지 않은 선발과 벤치는 재구성이라고 화면에 표시합니다.</p>
+      </section>
+
+      <nav className="screen-nav" aria-label="화면 이동">
+        <a className="button-link" href="#/">홈으로 돌아가기</a>
+        <a href="#/hall-of-fame">명예의 전당</a>
+      </nav>
     </main>
   );
 }

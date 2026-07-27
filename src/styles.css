@@ -66,3 +66,50 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
 .dugout-notice { width: min(100%, 38rem); margin: 1rem auto; padding: .7rem .85rem; border-left: 3px solid #0d6261; background: #e5efed; line-height: 1.5; }.dugout-actions { padding: 1rem 0 2rem; }.dugout-actions .button-link { margin: 0; border: 0; cursor: pointer; font: inherit; }
 .event-feed { margin: 0; padding-left: 1.3rem; line-height: 1.7; }.event-feed li + li { margin-top: .35rem; }.grade-result { display: inline-block; margin: 1rem 0 0; padding: .45rem .7rem; border-radius: .35rem; background: #0d6261; color: #fff; font-weight: 750; }.result-headline { margin-top: 1rem; font-weight: 700; }
 
+
+/* --- 경기 진행 재생 (D3) --- */
+.match-stage { position: relative; }
+.match-clock { display: flex; align-items: baseline; gap: .6rem; margin: .9rem 0 0; }
+.match-clock b { font-size: 1.6rem; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.match-clock span { color: #62706d; font-size: .86rem; }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .8rem; }
+.transport-main { min-width: 6.5rem; min-height: 2.75rem; padding: .6rem 1rem; border: 0; border-radius: .4rem; background: #0d6261; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.transport-main:disabled, .intervention-button:disabled { background: #aab3b0; color: #46504e; cursor: not-allowed; }
+.transport .text-button:disabled { color: #8a938f; cursor: not-allowed; }
+.speed-group { display: flex; gap: .25rem; }
+.speed-group button { min-width: 3.2rem; min-height: 2.75rem; padding: .5rem .55rem; border: 1px solid #9caaa6; border-radius: .35rem; background: #fff; color: #1e2528; font: inherit; font-size: .84rem; cursor: pointer; }
+.speed-group .is-selected { background: #173c37; border-color: #173c37; color: #fff; }
+.match-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; overflow-wrap: anywhere; }
+.match-code-line { margin-top: .8rem; color: #50605c; }
+.best-grade { margin: .7rem 0 0; color: #50605c; }
+.beat-overlay, .kickoff-overlay { position: absolute; inset: auto 0 0; display: grid; gap: .3rem; padding: 1rem 1.1rem; background: rgba(23,60,55,.94); color: #fff; border-radius: 0 0 .5rem .5rem; }
+.beat-overlay strong { font-size: 1.3rem; letter-spacing: -.03em; }
+.beat-overlay span, .kickoff-overlay span { font-size: .88rem; line-height: 1.5; color: #d7e5e0; }
+.beat-overlay.is-goal { background: rgba(13,98,97,.96); }
+.beat-overlay.is-concede { background: rgba(122,52,40,.96); }
+.beat-overlay.is-counter { background: rgba(74,64,30,.96); }
+.beat-overlay.is-final { background: rgba(30,37,40,.96); }
+.kickoff-overlay { inset: 0; align-content: center; border-radius: .5rem; }
+.kickoff-overlay .eyebrow { color: #d8f0a4; margin-bottom: .2rem; }
+.kickoff-overlay strong { font-size: 1.15rem; line-height: 1.5; }
+.scoreboard.is-goal { background: #0d6261; }
+.scoreboard.is-concede { background: #7a3428; }
+.feed-empty { color: #62706d; }
+.event-feed b { display: inline-block; min-width: 3.4rem; color: #0d6261; font-variant-numeric: tabular-nums; }
+.event-feed li.feed-goal { font-weight: 700; }
+.event-feed li.feed-aiCounter { color: #6b5a1f; }
+.event-feed li.feed-intervention { color: #0d6261; font-weight: 700; }
+.record-list { display: grid; gap: .6rem; margin: 1rem 0 1.25rem; padding: 0; list-style: none; }
+.record-row { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr) auto; gap: .8rem; align-items: center; padding: .8rem; border: 1px solid #cbd1cd; border-radius: .5rem; background: #fafbf8; }
+.record-grade { display: grid; width: 2.6rem; height: 2.6rem; place-items: center; border-radius: .4rem; background: #0d6261; color: #fff; font-weight: 750; }
+.record-grade.grade-F { background: #8a938f; }
+.record-body { display: grid; gap: .2rem; min-width: 0; }
+.record-body span { color: #50605c; font-size: .88rem; }
+.record-links { display: grid; gap: .25rem; justify-items: end; font-size: .85rem; }
+.record-date { color: #62706d; }
+
+@media (max-width: 640px) {
+  .transport-main, .speed-group button { flex: 1 0 auto; }
+  .record-row { grid-template-columns: 2.2rem minmax(0, 1fr); }
+  .record-links { grid-column: 1 / -1; justify-items: start; grid-auto-flow: column; gap: .9rem; }
+}

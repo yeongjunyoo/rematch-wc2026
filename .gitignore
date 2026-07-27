@@ -9,3 +9,4 @@ preview.log
 *.log
 probe-*.txt
 leader-audit.txt
+artifacts/

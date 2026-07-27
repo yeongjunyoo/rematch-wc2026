@@ -9,6 +9,8 @@ import { squadFor } from "../ui/squad";
 interface DugoutProps {
   scenarioId: string;
   tokenIndex: number;
+  /** 개입이 확정될 경기 시각. 헤더가 이 분을 그대로 보여준다. */
+  minute: number;
   initialFormation: FormationPreset;
   initialPlacements: readonly Placement[];
   initialDirectives: TacticalDirectives;
@@ -29,7 +31,7 @@ function PitchLines() {
   return <svg className="dugout-pitch-lines" viewBox="0 0 100 100" aria-hidden="true"><rect x="2" y="2" width="96" height="96" rx="2" /><path d="M50 2v96M2 20h16v60H2M98 20H82v60h16M2 37h7v26H2M98 37h-7v26h7" /><circle cx="50" cy="50" r="11" /></svg>;
 }
 
-export function Dugout({ scenarioId, tokenIndex, initialFormation, initialPlacements, initialDirectives, onConfirm, onClose }: DugoutProps) {
+export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initialPlacements, initialDirectives, onConfirm, onClose }: DugoutProps) {
   const squad = useMemo(() => squadFor(scenarioId), [scenarioId]);
   const [formation, setFormation] = useState(initialFormation);
   const [placements, setPlacements] = useState<readonly Placement[]>(initialPlacements);
@@ -113,7 +115,7 @@ export function Dugout({ scenarioId, tokenIndex, initialFormation, initialPlacem
 
   return (
     <section className="dugout-overlay" role="dialog" aria-modal="true" aria-label="더그아웃 전술 편집" onPointerDown={startDrag} onPointerMove={drag.onPointerMove} onPointerUp={finishDrag} onPointerCancel={drag.onPointerCancel} onLostPointerCapture={drag.onLostPointerCapture}>
-      <header className="dugout-header"><div><p className="eyebrow">더그아웃</p><h2>개입 {tokenIndex + 1}</h2></div><button type="button" className="text-button" onClick={onClose}>닫기</button></header>
+      <header className="dugout-header"><div><p className="eyebrow">더그아웃, {minute}분</p><h2>개입 {tokenIndex + 1}</h2></div><button type="button" className="text-button" onClick={onClose}>닫기</button></header>
       <div className="dugout-tabs" role="tablist"><button type="button" role="tab" aria-selected={tab === "shape"} onClick={() => setTab("shape")}>포메이션</button><button type="button" role="tab" aria-selected={tab === "directives"} onClick={() => setTab("directives")}>팀 지시</button></div>
       <div ref={pitchRef} className="dugout-pitch">
         <PitchLines />

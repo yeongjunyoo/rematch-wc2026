@@ -1,3 +1,4 @@
+import { HallOfFame } from "./screens/HallOfFame";
 import { Help } from "./screens/Help";
 import { Home } from "./screens/Home";
 import { MatchRoom } from "./screens/MatchRoom";
@@ -11,9 +12,11 @@ export function App() {
     case "home":
       return <Home />;
     case "match":
-      return <MatchRoom scenarioId={route.scenarioId} />;
+      return <MatchRoom key={`${route.scenarioId}:${route.attemptIndex}`} scenarioId={route.scenarioId} attemptIndex={route.attemptIndex} />;
     case "report":
-      return <Report scenarioId={route.scenarioId} />;
+      return <Report key={`${route.scenarioId}:${route.attemptIndex}`} scenarioId={route.scenarioId} attemptIndex={route.attemptIndex} />;
+    case "hallOfFame":
+      return <HallOfFame />;
     case "help":
       return <Help />;
     case "notFound":
@@ -22,7 +25,11 @@ export function App() {
           <p className="eyebrow">경로를 찾을 수 없습니다</p>
           <h1>요청한 화면이 없습니다.</h1>
           <p>입력한 주소: {route.raw || "빈 해시"}</p>
-          <a className="button-link" href="#/">홈으로 돌아가기</a>
+          <p>주소를 잘못 입력했거나, 없는 경기 또는 없는 시도 번호를 가리키고 있습니다.</p>
+          <nav className="screen-nav">
+            <a className="button-link" href="#/">홈으로 돌아가기</a>
+            <a href="#/help">도움말 보기</a>
+          </nav>
         </main>
       );
   }
