@@ -300,7 +300,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
     setFormation(intervention.formation);
     setPlacements(intervention.placements);
     setDirectives(intervention.directives);
-    setRuntime((current) => current === null ? current : commitIntervention(current, { ...intervention, tokenIndex: 3 - tokensRemaining }));
+    setRuntime((current) => current === null ? current : tickRuntime(commitIntervention(current, { ...intervention, tokenIndex: 3 - tokensRemaining })));
     setDugoutOpen(false);
     setNotice(`${runtime.state.clock.absoluteMinute}분에 개입을 확정했습니다. 상대 벤치는 잠시 뒤에야 이 변화를 알아챕니다.`);
     setPlaying(true);
