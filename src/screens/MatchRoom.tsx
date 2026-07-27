@@ -208,6 +208,11 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
     });
   }, [attemptIndex, runtime, scenario]);
 
+  // 스냅샷은 조기 반환보다 위에서 발행되므로 여기서 쓰는 값도 그 위에서 계산한다.
+  const promptQuickSub = runtime === null || scenario === undefined || isFinished(runtime)
+    ? null
+    : quickSubstitution(scenarioId, formation, placements, 0, directives);
+
   // 에이전트가 읽는 스냅샷. 훅이므로 조기 반환보다 위에 있어야 하고, 그래서
   // 시나리오가 없는 경우도 여기서 함께 표현한다.
   useAgentSnapshot(
@@ -231,7 +236,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
               .filter((label): label is string => label !== undefined);
             return ["포메이션", "팀 지시", "개입 확정", "취소", "닫기", ...benchNames, ...pitchNames];
           }
-          if (decisionPrompt) return ["지금 전술 바꾸기", "이대로 본다"];
+          if (decisionPrompt) return [...(promptQuickSub === null ? [] : [`${promptQuickSub.incoming} 투입`]), "전술 직접 바꾸기", "이대로 본다"];
           if (isFinished(runtime)) return ["결과 리포트 보기", "새 리매치 시작", "홈으로 돌아가기"];
           const notStarted = runtime.state.clock.absoluteMinute === scenario.interventionStartMinute && runtime.state.events.length === 0;
           if (notStarted) return ["전술 바꾸기", "경기 재개", "끝까지 건너뛰기", "홈으로 돌아가기"];
@@ -299,6 +304,16 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
     setDugoutOpen(false);
     setNotice(`${runtime.state.clock.absoluteMinute}분에 개입을 확정했습니다. 상대 벤치는 잠시 뒤에야 이 변화를 알아챕니다.`);
     setPlaying(true);
+  };
+
+  const quickSub = runtime === null || scenario === undefined || finished || tokensRemaining === 0
+    ? null
+    : quickSubstitution(scenarioId, formation, placements, 3 - tokensRemaining, directives);
+
+  const applyQuickSubstitution = () => {
+    if (quickSub === null) return;
+    setDecisionPrompt(false);
+    applyIntervention(quickSub.intervention);
   };
 
   const skipToEnd = () => {
@@ -375,7 +390,10 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
             <p className="eyebrow">{runtime.state.clock.absoluteMinute}분, 아직 아무것도 바꾸지 않았습니다</p>
             <strong>지금 바꾸지 않으면 남은 시간은 그냥 흘러갑니다.</strong>
             <div className="kickoff-actions">
-              <button type="button" className="kickoff-primary" onClick={openDugout}>지금 전술 바꾸기</button>
+              {quickSub === null ? null : (
+                <button type="button" className="kickoff-primary" onClick={applyQuickSubstitution}>{quickSub.incoming} 투입</button>
+              )}
+              <button type="button" className={quickSub === null ? "kickoff-primary" : "kickoff-secondary"} onClick={openDugout}>전술 직접 바꾸기</button>
               <button type="button" className="kickoff-secondary" onClick={() => { setDecisionPrompt(false); setPlaying(true); }}>이대로 본다</button>
             </div>
             <span>{scenario.mission.brief}</span>
@@ -459,6 +477,41 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
       )}
     </main>
   );
+}
+
+/**
+ * 상징 선수를 최전방 선수와 바꾸는 한 번짜리 개입.
+ * 선택지가 하나뿐인 경로가 없으면 탐색하지 않는 사용자는 이 게임의 핵심 행동을 영영 만나지 못한다.
+ */
+function quickSubstitution(
+  scenarioId: string,
+  formation: FormationPreset,
+  placements: readonly Placement[],
+  tokenIndex: number,
+  directives: TacticalDirectives,
+): { readonly intervention: Intervention; readonly incoming: string; readonly outgoing: string } | null {
+  const roster = squadFor(scenarioId);
+  const onPitch = new Set(placements.map((placement) => placement.playerId));
+  const incoming = roster.bench.find((player) => player.signature === true && !onPitch.has(player.id));
+  if (incoming === undefined) return null;
+  // 가장 앞선 선수와 바꾼다. 골키퍼를 빼는 사고를 막고 교체의 의미도 분명해진다.
+  const outgoing = [...placements].sort((left, right) => right.slot.x - left.slot.x)[0];
+  if (outgoing === undefined) return null;
+  const outgoingLabel = [...roster.starters, ...roster.bench].find((player) => player.id === outgoing.playerId)?.label ?? "선수";
+  return {
+    intervention: {
+      tokenIndex,
+      atMinute: 0,
+      directives,
+      formation,
+      placements: placements.map((placement) => placement.playerId === outgoing.playerId
+        ? { playerId: incoming.id, slot: placement.slot }
+        : placement),
+      substitutions: [{ outId: outgoing.playerId, inId: incoming.id }],
+    },
+    incoming: incoming.label,
+    outgoing: outgoingLabel,
+  };
 }
 
 function beatFor(fresh: readonly MatchEvent[], scenario: ScenarioDeclaration, decidedAtMinute: number | null): Beat | null {
