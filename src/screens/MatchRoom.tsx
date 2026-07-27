@@ -191,11 +191,12 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
       : {
         screen: "match",
         headline: scenario.displayTitle,
-        affordances: [
-          isFinished(runtime) ? "결과 리포트 보기" : playing ? "일시정지" : runtime.state.events.length > 0 ? "재개" : "경기 재개",
-          ...(isFinished(runtime) ? ["새 리매치 시작"] : ["더그아웃 열기", "끝까지 건너뛰기", "1배속", "2배속", "4배속"]),
-          "홈으로 돌아가기",
-        ],
+        affordances: (() => {
+          if (isFinished(runtime)) return ["결과 리포트 보기", "새 리매치 시작", "홈으로 돌아가기"];
+          const notStarted = runtime.state.clock.absoluteMinute === scenario.interventionStartMinute && runtime.state.events.length === 0;
+          if (notStarted) return ["전술을 바꾼다", "그냥 지켜본다", "더그아웃 열기", "끝까지 건너뛰기", "홈으로 돌아가기"];
+          return [playing ? "일시정지" : "재개", "더그아웃 열기", "끝까지 건너뛰기", "1배속", "2배속", "4배속", "홈으로 돌아가기"];
+        })(),
         detail: {
           시도: attemptIndex + 1,
           내팀: scenario.userTeam.displayName,
@@ -316,9 +317,19 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
           )}
           {!started && !finished ? (
             <div className="kickoff-overlay">
-              <p className="eyebrow">지금부터 당신이 감독입니다</p>
+              <p className="eyebrow">{scenario.interventionStartMinute}분, 당신이 벤치를 이어받았습니다</p>
               <strong>{scenario.mission.brief}</strong>
-              <span>재개를 누르면 {scenario.interventionStartMinute}분부터 경기가 다시 흐릅니다. 언제든 멈추고 더그아웃을 열 수 있습니다.</span>
+              {/*
+                자동 플레이테스트에서 캐주얼 페르소나가 두 번 연속 개입을 발견하지 못하고
+                재생만 하다 이탈했다. "무엇을 해야 결과가 바뀌는지 모르겠다"가 원문이다.
+                그래서 첫 화면의 가장 큰 행동을 재생이 아니라 전술 개입으로 바꾼다.
+                한 번에 한 가지만 제시하고, 그냥 보기는 부차 선택지로 내린다.
+              */}
+              <div className="kickoff-actions">
+                <button type="button" className="kickoff-primary" onClick={openDugout}>전술을 바꾼다</button>
+                <button type="button" className="kickoff-secondary" onClick={() => setPlaying(true)}>그냥 지켜본다</button>
+              </div>
+              <span>전술을 바꾸지 않으면 역사는 그대로 반복됩니다. 개입 토큰 {tokensRemaining}개를 쓸 수 있습니다.</span>
             </div>
           ) : null}
           {!finished ? null : (

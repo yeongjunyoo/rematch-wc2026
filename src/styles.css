@@ -113,3 +113,8 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
   .record-row { grid-template-columns: 2.2rem minmax(0, 1fr); }
   .record-links { grid-column: 1 / -1; justify-items: start; grid-auto-flow: column; gap: .9rem; }
 }
+
+/* 킥오프 오버레이의 주 행동. 자동 플레이테스트에서 개입이 발견되지 않아 승격했다. */
+.kickoff-actions { display: flex; flex-wrap: wrap; gap: .55rem; margin: .5rem 0 .2rem; }
+.kickoff-primary { min-height: 3rem; padding: .8rem 1.3rem; border: 0; border-radius: .45rem; background: #d8f0a4; color: #14332e; font: inherit; font-size: 1.05rem; font-weight: 750; cursor: pointer; }
+.kickoff-secondary { min-height: 3rem; padding: .8rem 1rem; border: 1px solid rgba(255,255,255,.45); border-radius: .45rem; background: transparent; color: #e8f1ee; font: inherit; cursor: pointer; }

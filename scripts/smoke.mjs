@@ -31,7 +31,7 @@ const VIEWPORTS = [
 /** 각 화면이 살아 있으면 반드시 담고 있어야 하는 문자열. */
 const ROUTES = [
   { hash: "#/", must: ["REMATCH", "벤치에 앉을 경기", "손흥민이 벤치에 있던", "대한민국 벤치, 63분", "아르헨티나 벤치, 90분"] },
-  { hash: "#/match/za-kor-2026", must: ["매치룸", "더그아웃 열기", "개입 토큰", "경기 재개", "매치 코드"], shot: true },
+  { hash: "#/match/za-kor-2026", must: ["매치룸", "더그아웃 열기", "개입 토큰", "전술을 바꾼다", "그냥 지켜본다", "매치 코드"], shot: true },
   { hash: "#/match/za-kor-2026/3", must: ["4번째 시도"] },
   { hash: "#/match/kor-cze-2026", must: ["매치룸", "체코"] },
   { hash: "#/match/esp-arg-2026-final", must: ["매치룸", "아르헨티나"] },

@@ -149,7 +149,7 @@ try {
   await page.goto("#/match/za-kor-2026");
   check("매치룸이 63분에서 멈춰 시작한다", (await page.text()).includes("63분"));
   check("4배속을 고를 수 있다", await page.clickText("4배속"));
-  check("경기를 재개할 수 있다", await page.clickText("경기 재개"));
+  check("경기를 재개할 수 있다", await page.clickText("그냥 지켜본다"));
   await waitFor(async () => !(await page.evaluate(`document.querySelector(".match-clock b").innerText`)).startsWith("63"), 12000, "경기 시계가 흐르지 않았습니다");
   const advanced = await page.evaluate(`document.querySelector(".match-clock b").innerText`);
   check("경기 시계가 실제로 전진한다", advanced !== "63분", advanced);
