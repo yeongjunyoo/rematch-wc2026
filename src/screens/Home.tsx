@@ -5,7 +5,7 @@ export function Home() {
   useAgentSnapshot({
     screen: "home",
     headline: "REMATCH, 손흥민이 벤치에 있던 그 밤을 당신이 다시 지휘한다",
-    affordances: [...SCENARIOS.map((scenario) => `벤치에 앉기 (${scenario.displayTitle})`), "도움말과 데이터 안내"],
+    affordances: [...SCENARIOS.map((scenario) => `${scenario.userTeam.displayName} 벤치, ${scenario.interventionStartMinute}분`), "도움말과 데이터 안내"],
     detail: Object.fromEntries(SCENARIOS.map((scenario, index) => [`경기${index + 1}`, `${scenario.displayTitle}, ${scenario.interventionStartMinute}분 ${scenario.startingUserGoals}대${scenario.startingOpponentGoals}, ${scenario.mission.brief}`])),
     feed: [],
   });
@@ -34,7 +34,7 @@ export function Home() {
               </dl>
               <p className="mission">{scenario.mission.brief}</p>
               <p className="history-note">{scenario.historyNote}</p>
-              <a className="button-link" href={`#/match/${scenario.id}`}>벤치에 앉기</a>
+              <a className="button-link" href={`#/match/${scenario.id}`}>{scenario.userTeam.displayName} 벤치, {scenario.interventionStartMinute}분</a>
             </article>
           ))}
         </div>
