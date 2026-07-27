@@ -244,7 +244,8 @@
     display: block;
   }
 
-  .mh-tokens {
+  /* 좁은 화면에서 점 장식은 접지만 잔량 숫자는 남긴다. 숫자까지 숨기면 기능 상태가 사라진다. */
+  .mh-token-dots {
     display: none;
   }
 

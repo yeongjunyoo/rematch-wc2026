@@ -61,7 +61,7 @@ const ACTION_SCHEMA = {
         additionalProperties: false,
         properties: {
           kind: { type: "string", enum: ["click", "wait", "formation", "directive", "confirm", "close", "quit"] },
-          label: { type: ["string", "null"], description: "click이면 누를 버튼 문구, formation이면 4-3-3 같은 프리셋, directive면 축 이름. 없으면 null." },
+          label: { type: ["string", "null"], description: "click이면 누를 버튼 문구, formation이면 4-3-3 또는 4-2-3-1 또는 3-4-3 또는 3-5-2 또는 5-4-1, directive면 수비 라인 또는 압박 강도 또는 템포 또는 공격 루트 또는 마인드셋 중 하나. 없으면 null." },
           value: { type: ["number", "null"], description: "wait이면 밀리초, directive면 -2에서 2 사이 정수. 없으면 null." },
         },
         required: ["kind", "label", "value"],
@@ -191,7 +191,7 @@ async function applyAction(page, action) {
           const tab = [...document.querySelectorAll(".dugout-tabs button")].find((b) => b.innerText.includes("지시"));
           if (tab) tab.click();
           const labels = [...document.querySelectorAll(".directive-controls label")];
-          const found = labels.find((l) => l.innerText.includes(${JSON.stringify(action.label ?? "")})) ?? labels[0];
+          const found = labels.find((l) => l.innerText.includes(${JSON.stringify(action.label ?? "")}));
           if (!found) return false;
           const slider = found.querySelector("input[type=range]");
           if (!slider) return false;

@@ -198,6 +198,9 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
         screen: "match",
         headline: scenario.displayTitle,
         affordances: (() => {
+          // 더그아웃이 열려 있으면 뒤 화면 조작은 눌리지 않는다. 스냅샷이 그것들을 계속 발행하면
+          // 에이전트는 사람이 못 누르는 것을 누르려 하고, 사람이 누를 수 있는 것은 보지 못한다.
+          if (isDugoutOpen) return ["포메이션", "팀 지시", "개입 확정", "취소", "닫기"];
           if (isFinished(runtime)) return ["결과 리포트 보기", "새 리매치 시작", "홈으로 돌아가기"];
           const notStarted = runtime.state.clock.absoluteMinute === scenario.interventionStartMinute && runtime.state.events.length === 0;
           if (notStarted) return ["전술 바꾸기", "그냥 지켜본다", "끝까지 건너뛰기", "홈으로 돌아가기"];

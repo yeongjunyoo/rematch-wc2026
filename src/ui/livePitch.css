@@ -209,5 +209,5 @@
   상대는 위치만 읽히도록 한 단계 낮춘다. 전술 도해의 명료성 상한을 지키는 방식이기도 하다.
 */
 .lp-team-opponent .lp-player-shirt { opacity: .72; }
-.lp-team-opponent .lp-player-label { opacity: .58; font-size: 85%; }
+.lp-team-opponent .lp-player-label { opacity: .58; font-size: 1.9px; stroke-width: .8px; }
 .lp-team-user .lp-player-label { paint-order: stroke fill; }

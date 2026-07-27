@@ -59,7 +59,12 @@ describe("경기 화면 좌표 변환", () => {
     ];
 
     for (const testCase of cases) expect(matchFocusPoint(testCase.events, testCase.minute)).toEqual(testCase.expected);
-    expect(matchFocusPoint([chance("opponent", 59)], 60)).toEqual(matchFocusPoint([chance("opponent", 59)], 60));
+    // 결정론은 같은 호출을 자기 자신과 비교해서는 증명되지 않는다. 사건 배열의 순서와 사본이 달라도
+    // 같은 사실이면 같은 초점이 나오는지를 본다.
+    const first = matchFocusPoint([chance("user", 58), chance("opponent", 59)], 60);
+    const second = matchFocusPoint([{ ...chance("user", 58) }, { ...chance("opponent", 59) }], 60);
+    expect(first).toEqual(second);
+    expect(first).not.toEqual(matchFocusPoint([chance("user", 59)], 60));
   });
 
   it("골, 반격, 찬스 순서로 강조하고 진영을 보존한다", () => {

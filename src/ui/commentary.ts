@@ -46,7 +46,11 @@ export function commentaryFor(event: MatchEvent, scenario: ScenarioDeclaration):
       const roster = new Map([...squadFor(scenario.id).starters, ...squadFor(scenario.id).bench].map((player) => [player.id, player.label]));
       const incoming = roster.get(event.inId);
       const outgoing = roster.get(event.outId);
-      if (incoming === undefined || outgoing === undefined) return `${us} 교체.`;
+      // 이름을 못 찾는 것은 내부 계약 파손이다. 일반 문구로 덮으면 교체가 일어난 것처럼 보이면서
+      // 누가 들어갔는지만 사라져 진단이 불가능해진다. 원래 식별자를 그대로 드러낸다.
+      if (incoming === undefined || outgoing === undefined) {
+        return `교체. ${outgoing ?? event.outId} 대신 ${incoming ?? event.inId} 투입. 명단에서 확인되지 않은 식별자입니다.`;
+      }
       return `교체. ${outgoing} 대신 ${incoming} 투입.`;
     }
     case "intervention":
