@@ -74,7 +74,7 @@ async function useToken() {
 }
 
 async function finish() {
-  await page.clickText("끝까지 건너뛰기");
+  await page.skipToEnd();
   await waitFor(() => page.evaluate("document.body.innerText.includes('경기가 끝났습니다')"), 12000, "경기 종료 실패");
 }
 
@@ -176,7 +176,7 @@ try {
   await fresh(); await page.clickText("그냥 지켜본다"); await sleep(800); await page.evaluate("(() => { for (let i=0;i<15;i+=1) [...document.querySelectorAll('button')].forEach((b) => { if (b.innerText.includes('전술 바꾸기') || b.innerText.includes('일시정지')) b.click(); }); return true; })()"); await sleep(500); const spam = await state();
   record("R08", "연출 및 실행 중 입력 폭주", "중복 개입과 음수 토큰이 없다", `토큰 ${token(spam)}, 더그아웃 ${spam.detail.더그아웃열림}, 연출 ${spam.detail.연출중}`, Number(token(spam)) >= 0 && Number(token(spam)) <= 3, []);
 
-  await fresh("#/match/ger-par-2026-r32"); await page.clickText("끝까지 건너뛰기"); const shootText = await page.text(); const shootClick = await page.clickText("전술 바꾸기");
+  await fresh("#/match/ger-par-2026-r32"); await page.skipToEnd(); const shootText = await page.text(); const shootClick = await page.clickText("전술 바꾸기");
   // 이 시도가 승부차기까지 가지 않았다면 표본이 그 국면을 담지 못한 것이지 제품이 틀린 것이 아니다.
   // 도달한 경우에만 계약을 판정하고, 도달하지 못하면 관측 불가로 남긴다.
   // 승부차기 국면 자체의 개입 계약은 tests/fixtures/intervention-budget.test.ts가 도메인에서 고정한다.
@@ -194,7 +194,7 @@ try {
 
   for (const value of ["-1", "1.5", "abc", "999", "01", "%2F"]) { await page.goto(`#/match/za-kor-2026/${value}`); const text = await page.text(); record(`R13-${value}`, "직접 주소 시도 번호 검증", "음수, 소수, 문자, 범위 밖은 거부된다", text.includes("경로를 찾을 수 없습니다") ? "안내 화면" : "매치 화면", ["-1", "1.5", "abc", "999", "%2F"].includes(value) ? text.includes("경로를 찾을 수 없습니다") : true, []); }
 
-  await fresh(); await page.evaluate("(() => { for (const key of ['localStorage','sessionStorage']) Object.defineProperty(window, key, { configurable: true, get() { throw new Error('blocked'); } }); return true; })()"); await page.clickText("끝까지 건너뛰기"); await waitFor(() => page.evaluate("document.body.innerText.includes('경기가 끝났습니다')"), 12000, "저장소 차단 경기 종료 실패"); await page.goto("#/hall-of-fame"); const blockedText = await page.text();
+  await fresh(); await page.evaluate("(() => { for (const key of ['localStorage','sessionStorage']) Object.defineProperty(window, key, { configurable: true, get() { throw new Error('blocked'); } }); return true; })()"); await page.skipToEnd(); await waitFor(() => page.evaluate("document.body.innerText.includes('경기가 끝났습니다')"), 12000, "저장소 차단 경기 종료 실패"); await page.goto("#/hall-of-fame"); const blockedText = await page.text();
   record("R14", "저장소 차단 환경", "경기는 종료되고 명예의 전당은 기록 불가를 안내한다", blockedText.includes("저장소 접근이 막혀") ? "안내 표시" : blockedText.slice(0, 100), blockedText.includes("저장소 접근이 막혀"), []);
 
   await fresh(); await page.evaluate("sessionStorage.setItem('rematch:result:za-kor-2026:0', '{bad json')"); await page.goto("#/report/za-kor-2026"); const brokenReport = await page.text();

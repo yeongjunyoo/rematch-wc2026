@@ -231,6 +231,20 @@ export class Page {
     return path;
   }
 
+  /**
+   * 경기를 끝까지 진행한다.
+   * 개입을 한 번도 만나지 않은 채 건너뛰면 게임이 한 번 멈춰 세우므로 그 경로를 지나간다.
+   */
+  async skipToEnd() {
+    await this.clickText("끝까지 건너뛰기");
+    if (await this.evaluate('document.querySelector(".decision-prompt") !== null')) {
+      await this.clickText("이대로 본다");
+      await sleep(200);
+      await this.clickText("끝까지 건너뛰기");
+    }
+    return true;
+  }
+
   close() {
     this.#socket.close();
   }

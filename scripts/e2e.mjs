@@ -51,6 +51,11 @@ try {
   await waitFor(async () => !String(await clockNow()).startsWith("63"), 12000, "경기 시계가 흐르지 않았습니다");
   const advanced = String(await clockNow());
   check("경기 시계가 실제로 전진한다", advanced !== "63분", advanced);
+  // 개입 없이 진행하면 3분 뒤 게임이 결정을 요구하며 멈춘다. 그 계약을 먼저 확인하고 이어간다.
+  await waitFor(() => page.evaluate('document.querySelector(".decision-prompt") !== null'), 12000, "결정 요구가 뜨지 않았습니다");
+  check("개입 없이 진행하면 게임이 결정을 요구한다", true);
+  check("결정 요구 중에는 건너뛰기가 잠긴다", await page.evaluate('document.querySelector(".mh-skip-button")?.disabled === true'));
+  check("이대로 본다로 빠져나올 수 있다", await page.clickText("이대로 본다"));
   await waitFor(() => page.evaluate(`document.querySelectorAll(".event-feed li").length > 0`), 15000, "경기 피드가 채워지지 않았습니다");
   check("경기 피드에 장면이 쌓인다", await page.evaluate(`document.querySelectorAll(".event-feed li").length > 0`));
 
@@ -105,7 +110,7 @@ try {
   const scenarios = ["za-kor-2026", "kor-cze-2026", "esp-arg-2026-final", "ger-par-2026-r32", "kor-ita-2002"];
   for (const scenarioId of scenarios) {
     await page.goto(`#/match/${scenarioId}`);
-    await page.clickText("끝까지 건너뛰기");
+    await page.skipToEnd();
     await waitFor(() => page.evaluate(`document.body.innerText.includes("경기가 끝났습니다")`), 15000, `${scenarioId} 경기가 끝나지 않았습니다`);
 
     await page.clickText("결과 리포트 보기");
@@ -126,7 +131,7 @@ try {
     return true;
   })()`);
   await page.goto("#/match/kor-cze-2026");
-  await page.clickText("끝까지 건너뛰기");
+  await page.skipToEnd();
   await waitFor(() => page.evaluate('document.body.innerText.includes("경기가 끝났습니다")'), 15000, "저장소 차단 상태에서 경기가 끝나지 않았습니다");
   await page.clickText("결과 리포트 보기");
   await waitFor(() => page.evaluate('document.body.innerText.includes("나의 결과")'), 6000, "저장소 차단 상태에서 리포트가 결과를 받지 못했습니다");
