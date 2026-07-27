@@ -61,14 +61,8 @@ export function tickRuntime(runtime: MatchRuntime): MatchRuntime {
   const book = bookFor(runtime.world);
   const { scenario } = runtime;
 
-  if (runtime.state.clock.phase === "shootout") {
-    const attempts = runtime.state.shootout?.attempts.length ?? 0;
-    if (attempts >= MAX_SHOOTOUT_ATTEMPTS) throw new Error("Simulation exceeded the shootout attempt limit.");
-    const applied = runtime.interventions.slice(0, runtime.appliedCount);
-    return { ...runtime, state: takePenalty(runtime.state, scenario, book, attempts + 1, applied) };
-  }
-  if (runtime.state.clock.absoluteMinute >= MAX_ABSOLUTE_MINUTE) throw new Error("Simulation exceeded the absolute minute limit.");
-
+  // 예약 개입 적용은 국면보다 위에 있다. 국면별 분기 뒤에 두면 그 분기 하나만
+  // 계약을 우회하게 되고, 실제로 승부차기에서 확정한 개입이 영원히 적용되지 않았다.
   let state = runtime.state;
   let appliedCount = runtime.appliedCount;
   const directiveHistory = [...runtime.directiveHistory];
@@ -78,6 +72,20 @@ export function tickRuntime(runtime: MatchRuntime): MatchRuntime {
     directiveHistory.push({ minute: state.clock.absoluteMinute, directives: intervention.directives });
     appliedCount += 1;
   }
+
+  if (state.clock.phase === "shootout") {
+    const attempts = state.shootout?.attempts.length ?? 0;
+    if (attempts >= MAX_SHOOTOUT_ATTEMPTS) throw new Error("Simulation exceeded the shootout attempt limit.");
+    const applied = runtime.interventions.slice(0, appliedCount);
+    return {
+      ...runtime,
+      state: takePenalty(state, scenario, book, attempts + 1, applied),
+      appliedCount,
+      directiveHistory,
+    };
+  }
+  if (state.clock.absoluteMinute >= MAX_ABSOLUTE_MINUTE) throw new Error("Simulation exceeded the absolute minute limit.");
+
   state = respondToObservedDirectives(state, directiveHistory, runtime.world);
   state = { ...state, clock: advanceClock(state.clock, scenario.format) };
   const chances = createChances(state, scenario, runtime.interventions.slice(0, appliedCount), book);

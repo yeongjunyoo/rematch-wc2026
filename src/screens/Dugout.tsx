@@ -11,6 +11,12 @@ interface DugoutProps {
   tokenIndex: number;
   /** 개입이 확정될 경기 시각. 헤더가 이 분을 그대로 보여준다. */
   minute: number;
+  /**
+   * 이 경기에서 이미 쓴 교체 카드 수.
+   * 예산의 정본은 확정된 개입들이고 모달은 그 위에 누적만 한다. 모달이 스스로 0부터
+   * 세면 다시 열 때마다 예산이 되살아나 경기당 세 장이라는 약속이 깨진다.
+   */
+  cardsUsedBefore: number;
   initialFormation: FormationPreset;
   initialPlacements: readonly Placement[];
   initialDirectives: TacticalDirectives;
@@ -32,12 +38,12 @@ function PitchLines() {
   return <svg className="dugout-pitch-lines" viewBox="0 0 100 100" aria-hidden="true"><rect x="2" y="2" width="96" height="96" rx="2" /><path d="M50 2v96M2 20h16v60H2M98 20H82v60h16M2 37h7v26H2M98 37h-7v26h7" /><circle cx="50" cy="50" r="11" /></svg>;
 }
 
-export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initialPlacements, initialDirectives, onConfirm, onClose }: DugoutProps) {
+export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initialFormation, initialPlacements, initialDirectives, onConfirm, onClose }: DugoutProps) {
   const squad = useMemo(() => squadFor(scenarioId), [scenarioId]);
   const [formation, setFormation] = useState(initialFormation);
   const [placements, setPlacements] = useState<readonly Placement[]>(initialPlacements);
   const [directives, setDirectives] = useState(initialDirectives);
-  const [cardsUsed, setCardsUsed] = useState(0);
+  const [cardsUsed, setCardsUsed] = useState(cardsUsedBefore);
   const [substitutions, setSubstitutions] = useState<readonly { readonly outId: string; readonly inId: string }[]>([]);
   const [tab, setTab] = useState<DugoutTab>("shape");
   // 벤치에서 고른 선수. 탭 두 번으로 교체하는 경로의 중간 상태다.
@@ -96,11 +102,11 @@ export function Dugout({ scenarioId, tokenIndex, minute, initialFormation, initi
     setFormation(initialFormation);
     setPlacements(initialPlacements);
     setDirectives(initialDirectives);
-    setCardsUsed(0);
+    setCardsUsed(cardsUsedBefore);
     setSubstitutions([]);
     setSelectedBenchId(null);
     setNotice(null);
-  }, [initialDirectives, initialFormation, initialPlacements, scenarioId]);
+  }, [cardsUsedBefore, initialDirectives, initialFormation, initialPlacements, scenarioId]);
 
   const pointFromEvent = (event: PointerEvent<HTMLElement>) => {
     const rect = pitchRef.current?.getBoundingClientRect();

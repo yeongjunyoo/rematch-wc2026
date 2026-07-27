@@ -383,6 +383,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
           scenarioId={scenarioId}
           tokenIndex={3 - tokensRemaining}
           minute={runtime.state.clock.absoluteMinute}
+          cardsUsedBefore={runtime.interventions.reduce((total, intervention) => total + intervention.substitutions.length, 0)}
           initialFormation={formation}
           initialPlacements={placements}
           initialDirectives={directives}
