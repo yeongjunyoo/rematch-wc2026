@@ -4,7 +4,7 @@ import { directiveWeights, formationEdge, ratingsFor, scoreContext, staminaFacto
 import { decisionDraw, fingerprintIntervention, worldDraw } from "./rng";
 import { FORMATION_SLOTS, fitness, slotRole } from "./tactics";
 import type { FormationPreset, Intervention, MatchEvent, MatchState, PenaltyResult, ScenarioDeclaration, Side, TacticalDirectives, WorldSeed } from "./types";
-import { defaultFormation, squadFor } from "../ui/squad";
+import { defaultFormation, initialPlacements, squadFor } from "../ui/squad";
 
 const MAX_ABSOLUTE_MINUTE = 200;
 const MAX_SHOOTOUT_ATTEMPTS = 100;
@@ -146,6 +146,36 @@ function respondToObservedDirectives(state: MatchState, history: readonly { minu
   };
 }
 
+/**
+ * 이 찬스를 만든 선수.
+ *
+ * 사용자 팀은 확정된 배치에서 고른다. 공격 지역에 있는 선수일수록 뽑힐 확률이 높지만
+ * 수비 선수도 배제하지 않는다. 상대는 명단이 출처로 확인되지 않았으므로 이름 없는
+ * 식별자를 그대로 쓴다. 없는 사실을 지어내지 않기 위해서다. 추출은 world draw라
+ * 같은 시드와 같은 행동이면 같은 선수가 나온다.
+ */
+function pickShooter(
+  side: Side,
+  state: MatchState,
+  scenario: ScenarioDeclaration,
+  applied: readonly Intervention[],
+  draw: number,
+): string {
+  if (side === "opponent") return `opponent-attack-${state.clock.absoluteMinute}`;
+  const latest = applied[applied.length - 1];
+  const placements = latest === undefined ? initialPlacements(scenario.id) : latest.placements;
+  if (placements.length === 0) return `user-attack-${state.clock.absoluteMinute}`;
+  // 깊이가 클수록 가중치가 크다. 골키퍼는 사실상 뽑히지 않는다.
+  const weights = placements.map((placement) => Math.max(0.05, (placement.slot.x / 100) ** 3));
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  let cursor = draw * total;
+  for (let index = 0; index < placements.length; index += 1) {
+    cursor -= weights[index] ?? 0;
+    if (cursor <= 0) return placements[index]!.playerId;
+  }
+  return placements[placements.length - 1]!.playerId;
+}
+
 function createChances(state: MatchState, scenario: ScenarioDeclaration, applied: readonly Intervention[], world: WorldBook): { state: MatchState; traced: readonly ExpectedChanceEntry[] } {
   const minute = state.clock.absoluteMinute;
   const user = userProfile(scenario, applied[applied.length - 1]);
@@ -159,8 +189,11 @@ function createChances(state: MatchState, scenario: ScenarioDeclaration, applied
     traced.push({ side, minute, expected });
     if (chanceDraw >= expected) continue;
     const converted = conversionThreshold(side, next, user, opponent) > conversionDraw;
-    next = { ...next, events: [...next.events, { type: "chance", side, shooterId: `${side}-attack-${minute}`, quality: Math.round(expected * 100) / 100, converted, clock: next.clock }] };
-    if (converted) next = applyGoal(next, scenario.format, { side, scorerId: `${side}-attack-${minute}`, kind: "openPlay" }, scenario.derivedOutcomeRule);
+    // 슈터는 실제로 피치에 있는 선수여야 한다. 합성 식별자를 쓰면 화면이 득점자를
+    // 팀 이름으로만 부르게 되고, 그러면 그 골은 내가 넣은 골이 아니라 통계가 된다.
+    const shooterId = pickShooter(side, next, scenario, applied, world.draw(`shooter:${side}`, minute));
+    next = { ...next, events: [...next.events, { type: "chance", side, shooterId, quality: Math.round(expected * 100) / 100, converted, clock: next.clock }] };
+    if (converted) next = applyGoal(next, scenario.format, { side, scorerId: shooterId, kind: "openPlay" }, scenario.derivedOutcomeRule);
   }
   return { state: next, traced };
 }
@@ -240,7 +273,7 @@ class WorldBook {
   private readonly draws: ReadonlyMap<string, number>;
   constructor(world: WorldSeed) {
     const entries: WorldTraceEntry[] = [];
-    for (let minute = 0; minute <= MAX_ABSOLUTE_MINUTE; minute += 1) for (const namespace of ["chance:user", "conversion:user", "chance:opponent", "conversion:opponent"]) entries.push({ namespace, minute, value: worldDraw(world, namespace, minute) });
+    for (let minute = 0; minute <= MAX_ABSOLUTE_MINUTE; minute += 1) for (const namespace of ["chance:user", "conversion:user", "chance:opponent", "conversion:opponent", "shooter:user", "shooter:opponent"]) entries.push({ namespace, minute, value: worldDraw(world, namespace, minute) });
     for (let attempt = 1; attempt <= MAX_SHOOTOUT_ATTEMPTS; attempt += 1) for (const side of ["user", "opponent"] as const) entries.push({ namespace: `penalty:${side}`, minute: attempt, value: worldDraw(world, `penalty:${side}`, attempt) });
     this.trace = entries;
     this.draws = new Map(entries.map((entry) => [`${entry.namespace}:${entry.minute}`, entry.value]));

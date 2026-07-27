@@ -66,7 +66,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
   const statusGuide = cardsRemaining === 0
     ? "교체 카드를 모두 사용했습니다. 포메이션과 팀 지시는 바꿀 수 있습니다."
     : selectedBenchId === null
-      ? "벤치 교체, 포메이션, 팀 지시를 바꿀 수 있습니다."
+      ? "교체하려면 아래 벤치에서 넣을 선수를 먼저 누르세요. 그다음 피치에서 뺄 선수를 누르면 교체됩니다."
       : "벤치 선수를 골랐습니다. 피치에서 뺄 선수를 누르세요.";
 
   useEffect(() => {
@@ -226,7 +226,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
       <header className="dugout-header"><div><p className="eyebrow">더그아웃, {minute}분</p><h2>개입 {tokenIndex + 1}</h2></div><button ref={closeButtonRef} type="button" className="text-button" onClick={onClose}>닫기</button></header>
       <p className="dg-status-guide" role="status">{statusGuide}</p>
       <section className="bench" aria-label="벤치 선수" style={SCROLL_REGION_STYLE}>
-        <p>벤치, 교체 카드 {cardsRemaining}장</p>
+        <p>벤치, 교체 카드 {cardsRemaining}장{cardsRemaining > 0 ? ". 누르면 넣을 선수로 선택됩니다" : ""}</p>
         <div className="dg-bench-scroll-frame">
           <div className="bench-scroll">{benchPlayers.map((player) => (
             <button

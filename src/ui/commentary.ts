@@ -8,6 +8,24 @@ import { squadFor } from "./squad";
  * 다른 경기로 읽는다. 그래서 문구 생성은 여기 한 곳에만 둔다.
  */
 
+/**
+ * 한국어 조사 선택.
+ * 받침을 무시하면 "대한민국가 넣었습니다"처럼 읽는 순간 기계가 쓴 글이 된다.
+ * 자동 플레이테스트에서 축구 팬이 정확히 그 문장을 지적했다.
+ */
+function withParticle(word: string, withFinal: string, withoutFinal: string): string {
+  const last = word.trim().slice(-1);
+  const code = last.charCodeAt(0);
+  if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return `${word}${withoutFinal}`;
+  return `${word}${(code - 0xac00) % 28 === 0 ? withoutFinal : withFinal}`;
+}
+
+/** 명단에서 확인되는 선수만 이름으로 부른다. 확인되지 않으면 이름을 지어내지 않는다. */
+function playerName(scenario: ScenarioDeclaration, id: string): string | null {
+  const squad = squadFor(scenario.id);
+  return [...squad.starters, ...squad.bench].find((player) => player.id === id)?.label ?? null;
+}
+
 export function clockLabel(clock: MatchClock): string {
   if (clock.phase === "shootout") return `승부차기 ${clock.shootoutRound ?? 1}번째 킥`;
   if (clock.phase === "finished") return "경기 종료";
@@ -30,14 +48,22 @@ export function commentaryFor(event: MatchEvent, scenario: ScenarioDeclaration):
   const teamOf = (side: Side): string => (side === "user" ? us : them);
 
   switch (event.type) {
-    case "goal":
-      return event.side === "user"
-        ? `골. ${us}가 넣었습니다.`
-        : `실점. ${them}가 넣었습니다.`;
-    case "chance":
+    case "goal": {
+      const scorer = event.side === "user" ? playerName(scenario, event.scorerId) : null;
+      if (event.side === "user") {
+        return scorer === null
+          ? `골. ${withParticle(us, "이", "가")} 넣었습니다.`
+          : `골. ${withParticle(scorer, "이", "가")} 넣었습니다.`;
+      }
+      return `실점. ${withParticle(them, "이", "가")} 넣었습니다.`;
+    }
+    case "chance": {
+      const shooter = event.side === "user" ? playerName(scenario, event.shooterId) : null;
+      const actor = shooter ?? teamOf(event.side);
       return event.converted
-        ? `${teamOf(event.side)}의 결정적 장면이 골로 이어집니다.`
-        : `${teamOf(event.side)}가 기회를 만들었지만 마무리가 빗나갑니다.`;
+        ? `${actor}의 결정적 장면이 골로 이어집니다.`
+        : `${withParticle(actor, "이", "가")} 기회를 만들었지만 마무리가 빗나갑니다.`;
+    }
     case "card":
       return `${teamOf(event.side)} 경고.`;
     case "substitution": {
@@ -56,7 +82,7 @@ export function commentaryFor(event: MatchEvent, scenario: ScenarioDeclaration):
     case "intervention":
       return event.summary;
     case "aiCounter":
-      return `상대 벤치가 반응합니다. ${event.counteredWhat}. 대신 ${event.exposedWeakness}가 열립니다.`;
+      return `상대 벤치가 반응합니다. ${event.counteredWhat}. 대신 ${withParticle(event.exposedWeakness, "이", "가")} 열립니다.`;
     case "penaltyAttempt":
       return event.result === "scored"
         ? `${teamOf(event.side)} 성공.`
