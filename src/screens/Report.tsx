@@ -92,7 +92,7 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
           매치코드: result?.matchCode ?? null,
           why: insight?.why ?? null,
           nextTry: insight?.nextTry ?? null,
-          interventionCount: insight?.decisions.length ?? 0,
+          interventionCount: insight === null ? null : insight.decisions.length,
         },
         feed: highlights.map((event) => `${clockLabel(event.clock)} ${commentaryFor(event, scenario)}`),
       },

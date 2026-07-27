@@ -365,7 +365,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
         {decisionPrompt && !finished ? (
           <div className="kickoff-overlay decision-prompt">
             <p className="eyebrow">{runtime.state.clock.absoluteMinute}분, 아직 아무것도 바꾸지 않았습니다</p>
-            <strong>이대로 두면 역사가 그대로 반복됩니다.</strong>
+            <strong>지금 바꾸지 않으면 남은 시간은 그냥 흘러갑니다.</strong>
             <div className="kickoff-actions">
               <button type="button" className="kickoff-primary" onClick={openDugout}>지금 전술 바꾸기</button>
               <button type="button" className="kickoff-secondary" onClick={() => { setDecisionPrompt(false); setPlaying(true); }}>이대로 본다</button>
@@ -386,7 +386,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
             <div className="kickoff-actions">
               <button type="button" className="kickoff-primary" onClick={openDugout}>전술 바꾸기</button>
             </div>
-            <span>전술을 바꾸지 않으면 역사는 그대로 반복됩니다. 개입 토큰 {tokensRemaining}개를 쓸 수 있습니다. 그냥 지켜보려면 위의 경기 재개를 누르세요.</span>
+            <span>전술을 바꾸지 않으면 역사를 바꿀 기회도 없습니다. 개입 토큰 {tokensRemaining}개를 쓸 수 있습니다. 그냥 지켜보려면 위의 경기 재개를 누르세요.</span>
           </div>
         ) : null}
         {!finished ? null : (

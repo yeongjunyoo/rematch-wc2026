@@ -1,6 +1,8 @@
 import { useState } from "react";
 
 import { clearRecords, loadRecords, recordsAvailable } from "../domain/records";
+import { canReplay, parseMatchCode } from "../domain/rng";
+import { DATA_VERSION, ENGINE_VERSION } from "../domain/version";
 import type { MatchRecord } from "../domain/records";
 import { matchHash, reportHash } from "../router";
 import { useAgentSnapshot } from "../agent/bridge";
@@ -18,6 +20,18 @@ function formatDate(savedAt: number): string {
   return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+/**
+ * 저장된 매치 코드가 지금 엔진에서 재생 가능한가.
+ *
+ * 코드에 버전을 넣어 둔 이유가 이것이다. 확인하지 않고 링크를 열면 옛 기록이
+ * 현재 엔진으로 조용히 다른 경기가 되어 재현 약속이 거짓이 된다.
+ */
+function replayable(record: MatchRecord): boolean {
+  const code = parseMatchCode(record.matchCode);
+  if (code === null) return false;
+  return canReplay(code, { engineVersion: ENGINE_VERSION, dataVersion: DATA_VERSION }).ok;
+}
+
 function RecordRow({ record }: { readonly record: MatchRecord }) {
   return (
     <li className="record-row">
@@ -30,7 +44,11 @@ function RecordRow({ record }: { readonly record: MatchRecord }) {
       <div className="record-links">
         <span className="record-date">{formatDate(record.savedAt)}</span>
         <a href={reportHash(record.scenarioId, record.attemptIndex)}>리포트</a>
-        <a href={matchHash(record.scenarioId, record.attemptIndex)}>다시 보기</a>
+        {replayable(record) ? (
+          <a href={matchHash(record.scenarioId, record.attemptIndex)}>다시 보기</a>
+        ) : (
+          <span className="record-stale">이 버전의 매치 엔진을 사용할 수 없어 재생할 수 없습니다</span>
+        )}
       </div>
     </li>
   );

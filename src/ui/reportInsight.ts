@@ -161,9 +161,12 @@ function nextTryFor(scenario: ScenarioDeclaration, interventions: readonly Inter
  * 인과를 단정하지 않는다. 계수는 시뮬레이션이 실제로 쓴 값이고 사건 수는 실제로 일어난 것이며,
  * 둘을 붙여 보여주는 것까지가 사실이다. 그 사이의 해석은 사용자 몫이다.
  */
-function tacticEffectFor(interventions: readonly Intervention[], tally: MatchTally): TacticEffect | null {
+function tacticEffectFor(interventions: readonly Intervention[], timeline: readonly MatchEvent[]): TacticEffect | null {
   const latest = [...interventions].sort((left, right) => left.tokenIndex - right.tokenIndex).pop();
   if (latest === undefined) return null;
+  // 마지막 전술이 지배한 구간의 사건만 센다. 경기 전체를 붙이면 그 전술이 있기도 전의
+  // 사건까지 그 전술의 효과라고 말하게 된다.
+  const tally = tallyFor(timeline.filter((event) => event.clock.absoluteMinute >= latest.atMinute));
   const weights = directiveWeights(latest.directives);
   const chanceShift = Math.round((weights.userChance - 1) * 100);
   const exposureShift = Math.round((weights.concede - 1) * 100);
@@ -171,7 +174,7 @@ function tacticEffectFor(interventions: readonly Intervention[], tally: MatchTal
   return {
     chanceShift,
     exposureShift,
-    summary: `마지막에 확정한 지시는 우리 기회를 ${move(chanceShift)}, 상대에게 내주는 위험을 ${move(exposureShift)} 설정한 것이었습니다. 그 아래에서 실제로 우리 기회는 ${tally.userChances}번, 상대 기회는 ${tally.opponentChances}번 기록됐습니다.`,
+    summary: `마지막에 확정한 지시는 우리 기회를 ${move(chanceShift)}, 상대에게 내주는 위험을 ${move(exposureShift)} 설정한 것이었습니다. 그 뒤 ${latest.atMinute}분부터 끝까지 우리 기회는 ${tally.userChances}번, 상대 기회는 ${tally.opponentChances}번 기록됐습니다.`,
   };
 }
 
@@ -195,7 +198,7 @@ export function buildReportInsight(input: {
   }
   const tally = tallyFor(input.timeline);
   return {
-    tacticEffect: tacticEffectFor(input.interventions, tally),
+    tacticEffect: tacticEffectFor(input.interventions, input.timeline),
     decisions,
     tally,
     why: whyFor(input.terminal, tally, decisions.length > 0),

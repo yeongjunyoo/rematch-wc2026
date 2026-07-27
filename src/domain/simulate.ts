@@ -11,7 +11,8 @@ const MAX_SHOOTOUT_ATTEMPTS = 100;
 const AI_COOLDOWN_MINUTES = 8;
 
 type SimulationInput = { readonly scenario: ScenarioDeclaration; readonly world: WorldSeed; readonly interventions: readonly Intervention[]; readonly startState: MatchState };
-type TeamProfile = { readonly formation: FormationPreset; readonly attack: number; readonly defense: number; readonly control: number; readonly stamina: number };
+/** `finishing`은 상징 선수가 피치에 있을 때의 결정력 배수다. 중립은 1이다. */
+type TeamProfile = { readonly formation: FormationPreset; readonly attack: number; readonly defense: number; readonly control: number; readonly stamina: number; readonly finishing: number };
 
 export interface WorldTraceEntry { readonly namespace: string; readonly minute: number; readonly value: number }
 /** `base`는 가뭄 보정 전 값이다. 개별 요인을 보정과 분리해 검증할 수 있어야 한다. */
@@ -155,6 +156,12 @@ function respondToObservedDirectives(state: MatchState, history: readonly { minu
  * 식별자를 그대로 쓴다. 없는 사실을 지어내지 않기 위해서다. 추출은 world draw라
  * 같은 시드와 같은 행동이면 같은 선수가 나온다.
  */
+/** 이 선수가 시나리오의 상징 선수인가. */
+function isSignaturePlayer(scenario: ScenarioDeclaration, playerId: string): boolean {
+  const roster = squadFor(scenario.id);
+  return [...roster.starters, ...roster.bench].some((player) => player.id === playerId && player.signature === true);
+}
+
 function pickShooter(
   side: Side,
   state: MatchState,
@@ -167,7 +174,13 @@ function pickShooter(
   const placements = latest === undefined ? initialPlacements(scenario.id) : latest.placements;
   if (placements.length === 0) return `user-attack-${state.clock.absoluteMinute}`;
   // 깊이가 클수록 가중치가 크다. 골키퍼는 사실상 뽑히지 않는다.
-  const weights = placements.map((placement) => Math.max(0.05, (placement.slot.x / 100) ** 3));
+  const roster = squadFor(scenario.id);
+  const signatures = new Set(roster.bench.concat(roster.starters).filter((player) => player.signature === true).map((player) => player.id));
+  const weights = placements.map((placement) => {
+    const depth = Math.max(0.05, (placement.slot.x / 100) ** 3);
+    // 상징 선수를 넣었으면 그가 결정적 장면의 주인공이어야 한다. 그게 이 제품이 약속한 장면이다.
+    return signatures.has(placement.playerId) ? depth * 3 : depth;
+  });
   const total = weights.reduce((sum, weight) => sum + weight, 0);
   let cursor = draw * total;
   for (let index = 0; index < placements.length; index += 1) {
@@ -211,10 +224,12 @@ function createChances(state: MatchState, scenario: ScenarioDeclaration, applied
     const expected = side === "user" ? applyDroughtRelief(base, next, scenario) : base;
     traced.push({ side, minute, expected, base });
     if (chanceDraw >= expected) continue;
-    const converted = conversionThreshold(side, next, user, opponent) > conversionDraw;
     // 슈터는 실제로 피치에 있는 선수여야 한다. 합성 식별자를 쓰면 화면이 득점자를
     // 팀 이름으로만 부르게 되고, 그러면 그 골은 내가 넣은 골이 아니라 통계가 된다.
     const shooterId = pickShooter(side, next, scenario, applied, world.draw(`shooter:${side}`, minute));
+    // 누가 찼는지가 전환에 반영되어야 상징 선수를 넣은 결정이 장면으로 돌아온다.
+    const shooterEdge = isSignaturePlayer(scenario, shooterId) ? 1.55 : 1;
+    const converted = conversionThreshold(side, next, user, opponent) * shooterEdge > conversionDraw;
     next = { ...next, events: [...next.events, { type: "chance", side, shooterId, quality: Math.round(expected * 100) / 100, converted, clock: next.clock }] };
     if (converted) next = applyGoal(next, scenario.format, { side, scorerId: shooterId, kind: "openPlay" }, scenario.derivedOutcomeRule);
   }
@@ -245,7 +260,7 @@ function conversionThreshold(side: Side, state: MatchState, user: TeamProfile, o
   const strength = own.attack / Math.max(1, theirs.defense);
   // 전환 기본값은 실축의 슈팅당 득점 범위를 향한다. 이전 값 0.13은 찬스를 두 배로 만들어도
   // 골이 0.13개에 그치게 해서 사용자가 자기 결정이 결과에 닿지 않는다고 느끼게 만들었다.
-  return clampProbability(0.24 * strength * directives.conversion * opposing.concede * (1 + edge.attack) * staminaFactor(state.clock.absoluteMinute, own.stamina, directives.staminaDrain), 0.06, 0.42);
+  return clampProbability(0.24 * strength * own.finishing * directives.conversion * opposing.concede * (1 + edge.attack) * staminaFactor(state.clock.absoluteMinute, own.stamina, directives.staminaDrain), 0.06, 0.42);
 }
 
 function userProfile(scenario: ScenarioDeclaration, intervention: Intervention | undefined): TeamProfile {
@@ -256,10 +271,27 @@ function userProfile(scenario: ScenarioDeclaration, intervention: Intervention |
   const rated = placements.map((placement) => {
     const player = byId.get(placement.playerId);
     const position = player?.position ?? slotRole(placement.slot);
-    return { ratings: ratingsFor(scenario.id, placement.playerId, position), fit: fitness(position, placement.slot) };
+    // 출처 확인 정도가 능력치 등급이 된다. 그래야 상징 선수를 넣는 결정이 실제로 무언가를 바꾼다.
+    const tier = player === undefined ? "reconstructed" : player.signature === true ? "signature" : player.confirmed ? "confirmed" : "reconstructed";
+    return { ratings: ratingsFor(scenario.id, placement.playerId, position, tier), fit: fitness(position, placement.slot) };
   });
   const strength = teamStrength(rated);
-  return { formation, ...strength, stamina: average(rated.map((player) => player.ratings.stamina)) };
+  // 상징 선수는 열한 명 평균에 묻히면 안 된다. 그를 넣는 것이 이 제품의 서사인데
+  // 평균만 쓰면 고정 추출 구조에서 그 결정이 결과를 하나도 바꾸지 못한다(실측 0/8).
+  // authored 보정이며 상대 프로필에는 적용하지 않는다.
+  const signaturesOnPitch = placements.filter((placement) => byId.get(placement.playerId)?.signature === true).length;
+  const signatureBoost = signaturesOnPitch * 6;
+  const signatureFinishing = 1 + Math.min(2, signaturesOnPitch) * 0.22;
+  // 교체로 막 들어온 선수는 체력이 온전하다. 후반 피로 구간에서 이 차이가 드러난다.
+  const freshLegs = Math.min(3, intervention?.substitutions.length ?? 0) * 2.5;
+  return {
+    formation,
+    attack: strength.attack + signatureBoost,
+    defense: strength.defense,
+    control: strength.control + signatureBoost * 0.4,
+    stamina: average(rated.map((player) => player.ratings.stamina)) + freshLegs,
+    finishing: signatureFinishing,
+  };
 }
 
 function opponentProfile(scenario: ScenarioDeclaration): TeamProfile {
@@ -269,7 +301,7 @@ function opponentProfile(scenario: ScenarioDeclaration): TeamProfile {
     return { ratings: ratingsFor(scenario.id, `authored-opponent-${index + 1}`, position), fit: "primary" as const };
   });
   const strength = teamStrength(rated);
-  return { formation, ...strength, stamina: average(rated.map((player) => player.ratings.stamina)) };
+  return { formation, ...strength, stamina: average(rated.map((player) => player.ratings.stamina)), finishing: 1 };
 }
 
 function takePenalty(state: MatchState, scenario: ScenarioDeclaration, world: WorldBook, attempt: number, applied: readonly Intervention[]): MatchState {

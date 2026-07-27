@@ -6,6 +6,13 @@ export interface SquadPlayer {
   label: string;
   position: "GK" | "DF" | "MF" | "FW";
   confirmed: boolean;
+  /**
+   * 이 시나리오의 상징 선수인가.
+   * 손흥민을 넣는 것이 이 제품의 서사인데 능력치가 다른 공격수와 같으면
+   * 그 결정이 기계적으로 아무 일도 하지 않는다. authored 밸런스 프로필이며
+   * 출처로 확인된 선수에게만 붙인다.
+   */
+  signature?: boolean;
 }
 
 type Squad = { readonly starters: readonly SquadPlayer[]; readonly bench: readonly SquadPlayer[] };
@@ -58,7 +65,7 @@ const SOUTH_AFRICA_STARTERS: readonly SquadPlayer[] = [
 const SQUADS: Readonly<Record<string, Squad>> = {
   "za-kor-2026": {
     starters: SOUTH_AFRICA_STARTERS,
-    bench: [confirmed("son-heung-min", "손흥민", "FW"), reconstructed("za-kor-b-gk", "GK"), reconstructed("za-kor-b-df", "DF"), reconstructed("za-kor-b-mf", "MF"), reconstructed("za-kor-b-fw", "FW")],
+    bench: [{ ...confirmed("son-heung-min", "손흥민", "FW"), signature: true }, reconstructed("za-kor-b-gk", "GK"), reconstructed("za-kor-b-df", "DF"), reconstructed("za-kor-b-mf", "MF"), reconstructed("za-kor-b-fw", "FW")],
   },
   "kor-cze-2026": {
     starters: line("kor-cze", [confirmed("hwang-in-beom", "황인범", "MF"), confirmed("kim-seung-gyu", "김승규", "GK")], "4-2-3-1"),

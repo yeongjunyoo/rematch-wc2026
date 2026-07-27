@@ -26,18 +26,39 @@ const ROLE_BASELINES: Record<Position, PlayerRatings> = {
   FW: { pace: 80, passing: 70, finishing: 82, defending: 62, stamina: 73, composure: 75 },
 };
 
-/** Returns a deterministic authored balance profile in the inclusive 60..85 range. */
-export function ratingsFor(scenarioId: string, playerId: string, position: Position): PlayerRatings {
+/**
+ * Returns a deterministic authored balance profile.
+ *
+ * 이름이 출처로 확인된 선수는 재구성 선수보다 낫고, 시나리오의 상징 선수는 그보다 더 낫다.
+ * 같은 포지션이면 전부 같은 능력치를 주면 손흥민을 넣는 결정이 기계적으로 아무 일도 하지 않는다.
+ * authored 프로필이며 실축 능력치를 재현한다고 주장하지 않는다.
+ */
+export function ratingsFor(
+  scenarioId: string,
+  playerId: string,
+  position: Position,
+  tier: PlayerTier = "reconstructed",
+): PlayerRatings {
   const baseline = ROLE_BASELINES[position];
+  const bonus = TIER_BONUS[tier];
   const ratings = {} as PlayerRatings;
 
   for (const key of RATING_KEYS) {
     const variation = (hashSeed(`${scenarioId}:${playerId}:${position}:${key}`) % 5) - 2;
-    ratings[key] = baseline[key] + variation;
+    ratings[key] = clamp(baseline[key] + variation + bonus, 50, 94);
   }
 
   return ratings;
 }
+
+/** 출처 확인 정도에 따른 authored 등급. */
+export type PlayerTier = "reconstructed" | "confirmed" | "signature";
+
+const TIER_BONUS: Record<PlayerTier, number> = {
+  reconstructed: 0,
+  confirmed: 3,
+  signature: 9,
+};
 
 /**
  * Formation compatibility is derived only from each preset's line counts, never from a diagram.

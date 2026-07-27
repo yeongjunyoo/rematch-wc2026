@@ -118,3 +118,6 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
 /* 결정을 요구하는 순간은 킥오프 안내와 다른 무게여야 한다. 지금 멈춰 세운 이유가 있기 때문이다. */
 .decision-prompt { background: rgba(122,52,40,.95); }
 .decision-prompt .eyebrow { color: #ffd9cd; }
+
+/* 옛 버전 기록은 재생하지 않는다. 조용히 다른 경기를 보여주느니 못 한다고 말한다. */
+.record-stale { color: #7a3428; font-size: .8rem; line-height: 1.4; max-width: 12rem; text-align: right; }
