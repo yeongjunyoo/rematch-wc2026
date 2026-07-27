@@ -10,7 +10,7 @@ import { NEUTRAL_DIRECTIVES } from "../domain/types";
 import type { FormationPreset, Intervention, MatchEvent, MatchState, Placement, ScenarioDeclaration, TacticalDirectives } from "../domain/types";
 import { DATA_VERSION, ENGINE_VERSION } from "../domain/version";
 import { clockLabel, commentaryFor, isFeedWorthy, phaseLabel } from "../ui/commentary";
-import { defaultFormation, initialPlacements } from "../ui/squad";
+import { defaultFormation, initialPlacements, squadFor } from "../ui/squad";
 import { rememberResult } from "../ui/matchResult";
 import { matchHash, reportHash } from "../router";
 import { LivePitch } from "../ui/LivePitch";
@@ -219,7 +219,18 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
         affordances: (() => {
           // 더그아웃이 열려 있으면 뒤 화면 조작은 눌리지 않는다. 스냅샷이 그것들을 계속 발행하면
           // 에이전트는 사람이 못 누르는 것을 누르려 하고, 사람이 누를 수 있는 것은 보지 못한다.
-          if (isDugoutOpen) return ["포메이션", "팀 지시", "개입 확정", "취소", "닫기"];
+          if (isDugoutOpen) {
+            // 더그아웃에서 사람이 실제로 누를 수 있는 것은 탭과 버튼만이 아니라
+            // 벤치 카드와 피치 토큰이다. 그것들을 빼면 자동 플레이테스트는 사람이
+            // 할 수 있는 교체를 할 수 없는 상태로 게임을 평가하게 된다.
+            const roster = squadFor(scenarioId);
+            const onPitch = new Set(placements.map((placement) => placement.playerId));
+            const benchNames = roster.bench.filter((player) => !onPitch.has(player.id)).map((player) => player.label);
+            const pitchNames = placements
+              .map((placement) => [...roster.starters, ...roster.bench].find((player) => player.id === placement.playerId)?.label)
+              .filter((label): label is string => label !== undefined);
+            return ["포메이션", "팀 지시", "개입 확정", "취소", "닫기", ...benchNames, ...pitchNames];
+          }
           if (decisionPrompt) return ["지금 전술 바꾸기", "이대로 본다"];
           if (isFinished(runtime)) return ["결과 리포트 보기", "새 리매치 시작", "홈으로 돌아가기"];
           const notStarted = runtime.state.clock.absoluteMinute === scenario.interventionStartMinute && runtime.state.events.length === 0;
