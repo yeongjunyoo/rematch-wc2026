@@ -56,10 +56,7 @@ async function substitute(inName, outName) {
   await sleep(120);
   if (!(await page.clickText(outName))) return false;
   await sleep(120);
-  if (!(await page.evaluate("document.querySelector('.dg-substitution-confirmation') !== null"))) return false;
-  const done = await page.clickText("이 교체 적용");
-  await sleep(120);
-  return done;
+  return true;
 }
 
 async function openDugout() {

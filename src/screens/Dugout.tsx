@@ -51,12 +51,9 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
   // 벤치에서 고른 선수. 탭 두 번으로 교체하는 경로의 중간 상태다.
   const [selectedBenchId, setSelectedBenchId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [pendingSubstitution, setPendingSubstitution] = useState<{ readonly outId: string; readonly inId: string } | null>(null);
 
   const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const substitutionConfirmationRef = useRef<HTMLElement>(null);
-  const substitutionConfirmButtonRef = useRef<HTMLButtonElement>(null);
 
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
@@ -111,29 +108,16 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
     return () => { previouslyFocusedRef.current?.focus(); };
   }, []);
 
-  useEffect(() => {
-    if (pendingSubstitution !== null) substitutionConfirmButtonRef.current?.focus();
-  }, [pendingSubstitution]);
 
-
-  const cancelPendingSubstitution = () => {
-    setPendingSubstitution(null);
-    setSelectedBenchId(null);
-    setNotice("교체를 취소했습니다. 배치와 교체 카드는 그대로입니다.");
-  };
 
   const handleDialogKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Escape") {
       event.preventDefault();
-      if (pendingSubstitution !== null) {
-        cancelPendingSubstitution();
-      } else {
-        onClose();
-      }
+      onClose();
       return;
     }
     if (event.key !== "Tab") return;
-    const focusableRoot = pendingSubstitution === null ? dialogRef.current : substitutionConfirmationRef.current;
+    const focusableRoot = dialogRef.current;
     const focusable = focusableRoot?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])');
 
     if (focusable === undefined || focusable.length === 0) {
@@ -169,7 +153,6 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
     setSubstitutions([]);
     setSelectedBenchId(null);
     setNotice(null);
-    setPendingSubstitution(null);
 
   }, [cardsUsedBefore, initialDirectives, initialFormation, initialPlacements, scenarioId]);
 
@@ -195,28 +178,13 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
       setNotice(`교체할 수 없습니다. ${result.reason}`);
       return;
     }
-    setPendingSubstitution({ outId, inId });
-    setSelectedBenchId(null);
-    setNotice(null);
-  };
-
-  const confirmPendingSubstitution = () => {
-    if (pendingSubstitution === null) return;
-    const { outId, inId } = pendingSubstitution;
-    const result = substitute(placements, outId, inId, cardsUsed, 3);
-    if (!result.ok) {
-      setPendingSubstitution(null);
-      setNotice(`교체할 수 없습니다. ${result.reason}`);
-      return;
-    }
     setPlacements(result.placements);
     setCardsUsed(result.cardsUsed);
     setSubstitutions((current) => [...current, { outId, inId }]);
-    setPendingSubstitution(null);
-    const incoming = players.get(inId);
-    const outgoing = players.get(outId);
-    setNotice(`${incoming?.label ?? "선수"}를 넣고 ${outgoing?.label ?? "선수"}를 뺐습니다. 교체 카드를 사용했습니다.`);
+    setSelectedBenchId(null);
+    setNotice(`${players.get(inId)?.label ?? "선수"}를 넣고 ${players.get(outId)?.label ?? "선수"}를 뺐습니다. 교체 카드를 사용했습니다. 개입 확정을 눌러야 경기에 반영되고, 취소하면 이 편집은 전부 사라집니다.`);
   };
+
 
 
   /**
@@ -280,12 +248,6 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
   const confirm = () => {
     // 벤치 선수만 고르고 뺄 선수를 안 고른 채 확정하면, 사용자는 교체했다고 믿지만 아무 일도 안 일어난다.
     // 자동 플레이테스트의 축구 팬이 정확히 이 상태로 경기를 끝까지 보고 배신감을 느꼈다.
-    if (pendingSubstitution !== null) {
-      const incoming = players.get(pendingSubstitution.inId)?.label ?? "선수";
-      const outgoing = players.get(pendingSubstitution.outId)?.label ?? "선수";
-      setNotice(`${outgoing} 대신 ${incoming}를 넣는 교체가 아직 확인 전입니다. 교체 확정을 누르거나 교체 취소로 되돌리세요.`);
-      return;
-    }
     if (selectedBenchId !== null) {
       setNotice(`${players.get(selectedBenchId)?.label ?? "선수"}를 넣을 자리를 아직 고르지 않았습니다. 피치에서 뺄 선수를 누르거나 다시 눌러 선택을 해제하세요.`);
       return;
@@ -299,8 +261,6 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
     onConfirm(intervention);
   };
 
-  const pendingIncoming = pendingSubstitution === null ? null : players.get(pendingSubstitution.inId);
-  const pendingOutgoing = pendingSubstitution === null ? null : players.get(pendingSubstitution.outId);
 
 
   return (
@@ -375,18 +335,6 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
       <p className="fitness-legend"><i className="fitness-primary" />주 포지션 <i className="fitness-playable" />소화 가능 <i className="fitness-poor" />부적합</p>
       {notice === null ? null : <p className="dugout-notice" role="status">{notice}</p>}
       <footer className="dugout-actions"><button type="button" className="text-button" onClick={onClose}>취소</button><button type="button" className="button-link" onClick={confirm}>개입 확정</button></footer>
-      {pendingSubstitution === null ? null : (
-        <section ref={substitutionConfirmationRef} className="dg-substitution-confirmation" role="alertdialog" aria-labelledby="substitution-confirmation-title" aria-describedby="substitution-confirmation-description" tabIndex={-1}>
-          <div className="dg-substitution-confirmation__panel">
-            <h3 id="substitution-confirmation-title">이 교체를 적용할까요</h3>
-            <p id="substitution-confirmation-description">{pendingOutgoing?.label ?? "선수"}을 빼고 {pendingIncoming?.label ?? "선수"}을 넣습니다. 교체 카드 1장을 사용하며 {cardsRemaining - 1}장 남습니다. 적용해도 경기는 아직 재개되지 않고, 마지막에 개입 확정을 눌러야 반영됩니다.</p>
-            <div className="dg-substitution-confirmation__actions">
-              <button type="button" className="text-button" onClick={cancelPendingSubstitution}>교체 취소</button>
-              <button ref={substitutionConfirmButtonRef} type="button" className="button-link" onClick={confirmPendingSubstitution}>이 교체 적용</button>
-            </div>
-          </div>
-        </section>
-      )}
     </section>
   );
 }
