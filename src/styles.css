@@ -48,7 +48,11 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
 .fitness-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; width: min(100%, 38rem); margin: .7rem auto; font-size: .78rem; }.fitness-legend i { width: .75rem; height: .75rem; border: 2px solid; border-radius: 50%; }
 .bench { width: min(100%, 38rem); margin: 0 auto; }.bench > p { margin-bottom: .5rem; font-size: .88rem; font-weight: 700; }.bench-scroll { display: flex; gap: .6rem; overflow-x: auto; padding-bottom: .35rem; }.bench-card { display: grid; flex: 0 0 6rem; min-height: 4.1rem; padding: .55rem; border: 1px solid #9caaa6; border-radius: .45rem; background: #fff; color: #1e2528; cursor: grab; font: inherit; text-align: left; }.bench-card small { color: #62706d; margin-top: .25rem; }
 .directive-controls { display: grid; gap: .85rem; width: min(100%, 38rem); margin: 1rem auto; }.directive-controls label { display: grid; gap: .28rem; }.directive-controls label span { display: flex; justify-content: space-between; }.directive-controls small { display: flex; justify-content: space-between; color: #62706d; }.directive-controls em { font-style: normal; }.directive-controls input[type="range"] { width: 100%; min-height: 2.75rem; }
-.dugout-notice { width: min(100%, 38rem); margin: 1rem auto; padding: .7rem .85rem; border-left: 3px solid #0d6261; background: #e5efed; line-height: 1.5; }.dugout-actions { padding: 1rem 0 2rem; }.dugout-actions .button-link { margin: 0; border: 0; cursor: pointer; font: inherit; }
+.dugout-notice { width: min(100%, 38rem); margin: 1rem auto; padding: .7rem .85rem; border-left: 3px solid #0d6261; background: #e5efed; line-height: 1.5; }
+/* 더그아웃 내용은 뷰포트보다 길다. 확정 버튼이 1,400px 아래에 있으면 사용자는 교체해 놓고
+   반영하는 방법을 못 찾는다. 스크롤 컨테이너 바닥에 고정한다. */
+.dugout-actions { position: sticky; bottom: 0; z-index: 2; width: min(100%, 38rem); padding: .8rem .6rem; background: #f4f5f2; border-top: 1px solid #cdd6d2; box-shadow: 0 -6px 14px rgba(23,60,55,.14); }
+.dugout-actions .button-link { margin: 0; border: 0; cursor: pointer; font: inherit; }
 .event-feed { margin: 0; padding-left: 1.3rem; line-height: 1.7; }.event-feed li + li { margin-top: .35rem; }.grade-result { display: inline-block; margin: 1rem 0 0; padding: .45rem .7rem; border-radius: .35rem; background: #0d6261; color: #fff; font-weight: 750; }.result-headline { margin-top: 1rem; font-weight: 700; }
 
 
