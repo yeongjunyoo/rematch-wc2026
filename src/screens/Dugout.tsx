@@ -7,6 +7,7 @@ import type { FormationPreset, Intervention, Placement, TacticalDirectives } fro
 import { diffIntervention } from "../domain/rng";
 import { DRAG_HANDLE_STYLE, SCROLL_REGION_STYLE, useDragController } from "../ui/drag";
 import { squadFor } from "../ui/squad";
+import { objectParticle } from "../ui/commentary";
 
 interface DugoutProps {
   scenarioId: string;
@@ -182,7 +183,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
     setCardsUsed(result.cardsUsed);
     setSubstitutions((current) => [...current, { outId, inId }]);
     setSelectedBenchId(null);
-    setNotice(`${players.get(inId)?.label ?? "선수"}를 넣고 ${players.get(outId)?.label ?? "선수"}를 뺐습니다. 교체 카드를 사용했습니다. 개입 확정을 눌러야 경기에 반영되고, 취소하면 이 편집은 전부 사라집니다.`);
+    setNotice(`${objectParticle(players.get(inId)?.label ?? "선수")} 넣고 ${objectParticle(players.get(outId)?.label ?? "선수")} 뺐습니다. 교체 카드를 사용했습니다. 개입 확정을 눌러야 경기에 반영되고, 취소하면 이 편집은 전부 사라집니다.`);
   };
 
 
@@ -249,7 +250,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
     // 벤치 선수만 고르고 뺄 선수를 안 고른 채 확정하면, 사용자는 교체했다고 믿지만 아무 일도 안 일어난다.
     // 자동 플레이테스트의 축구 팬이 정확히 이 상태로 경기를 끝까지 보고 배신감을 느꼈다.
     if (selectedBenchId !== null) {
-      setNotice(`${players.get(selectedBenchId)?.label ?? "선수"}를 넣을 자리를 아직 고르지 않았습니다. 피치에서 뺄 선수를 누르거나 다시 눌러 선택을 해제하세요.`);
+      setNotice(`${objectParticle(players.get(selectedBenchId)?.label ?? "선수")} 넣을 자리를 아직 고르지 않았습니다. 피치에서 뺄 선수를 누르거나 다시 눌러 선택을 해제하세요.`);
       return;
     }
     const intervention: Intervention = { tokenIndex, atMinute: 0, directives: clampDirectives(directives), formation, placements, substitutions };
@@ -322,7 +323,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
               onClick={() => handleTap(placement.playerId)}
               aria-label={selectedBenchId === null
                 ? `${player.label}, ${player.position}${player.confirmed ? "" : ", 재구성"}`
-                : `${player.label}를 빼고 ${players.get(selectedBenchId)?.label ?? "선수"}를 넣기`}
+                : `${objectParticle(player.label)} 빼고 ${objectParticle(players.get(selectedBenchId)?.label ?? "선수")} 넣기`}
             >
               <span>{player.label}</span>
               <small>{player.position}</small>

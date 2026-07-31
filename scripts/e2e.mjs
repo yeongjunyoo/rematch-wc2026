@@ -106,6 +106,37 @@ try {
   check("변화 없는 확정에 토큰이 소모되지 않는다", (await tokensLeft()) === 2);
   await page.clickText("취소");
 
+  // 3-b. 사람이 쓰는 입력으로도 교체가 된다 (진짜 포인터)
+  //
+  // 위의 모든 검사는 element.click()이라 pointerdown과 pointerup을 만들지 않는다.
+  // 2026-07-31에 더그아웃이 pointerdown 시점에 포인터 캡처를 잡고 있어서 pointerup이
+  // 오버레이로 재타깃되고, 벤치 카드의 click이 통째로 사라졌다. 마우스 사용자는 손흥민을
+  // 넣을 수 없었는데 이 파일의 관문 43건은 전부 초록이었다. 그 구멍을 여기서 막는다.
+  await page.goto("#/match/za-kor-2026/2");
+  await waitFor(() => page.evaluate(`document.querySelector(".kickoff-primary") !== null || document.querySelector(".mh-dugout-button") !== null`), 5000, "매치룸 재진입 실패");
+  check("[진짜 포인터] 더그아웃을 연다", await page.pointerClickText("전술 바꾸기"));
+  await waitFor(() => page.evaluate(`document.querySelector(".dugout-overlay") !== null`), 5000, "[진짜 포인터] 더그아웃이 열리지 않았습니다");
+  check("[진짜 포인터] 벤치 선수를 눌러 고른다", await page.pointerClickText("손흥민"));
+  await waitFor(
+    () => page.evaluate('[...document.querySelectorAll(".bench-card")].some((node) => node.innerText.includes("손흥민") && node.getAttribute("aria-pressed") === "true")'),
+    4000,
+    "[진짜 포인터] 벤치 선택이 반영되지 않았습니다",
+  );
+  check("[진짜 포인터] 벤치 선택이 aria-pressed로 남는다", true);
+  check("[진짜 포인터] 피치 선수를 눌러 교체한다", await page.pointerClickText("오현규"));
+  await waitFor(
+    () => page.evaluate('(document.querySelector(".dugout-notice")?.innerText ?? "").includes("교체 카드를 사용했습니다")'),
+    4000,
+    "[진짜 포인터] 교체가 성립하지 않았습니다",
+  );
+  check("[진짜 포인터] 손흥민이 피치에 선다", await page.evaluate('[...document.querySelectorAll(".player-token")].some((node) => node.innerText.includes("손흥민"))'));
+  check("[진짜 포인터] 개입을 확정한다", await page.pointerClickText("개입 확정"));
+  await waitFor(() => page.evaluate(`document.querySelector(".dugout-overlay") === null`), 5000, "[진짜 포인터] 더그아웃이 닫히지 않았습니다");
+  const pointerSubstitutionInFeed = async () =>
+    (await page.snapshot())?.feed.some((event) => event.includes("손흥민") && event.includes("오현규")) ?? false;
+  await waitFor(pointerSubstitutionInFeed, 12000, "[진짜 포인터] 경기 피드에 교체가 남지 않았습니다");
+  check("[진짜 포인터] 교체가 경기 피드에 남는다", await pointerSubstitutionInFeed());
+
   // 4. 다섯 시나리오가 각자의 종료 경로로 끝난다
   const scenarios = ["za-kor-2026", "kor-cze-2026", "esp-arg-2026-final", "ger-par-2026-r32", "kor-ita-2002"];
   for (const scenarioId of scenarios) {

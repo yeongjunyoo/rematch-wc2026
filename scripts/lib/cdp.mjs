@@ -197,6 +197,36 @@ export class Page {
     return this.evaluate("window.__REMATCH__ ? window.__REMATCH__.snapshot() : null");
   }
 
+  /**
+   * 진짜 포인터로 누른다. `clickText`의 `element.click()`은 pointerdown과 pointerup을
+   * 만들지 않아서, 포인터 캡처나 드래그 계층이 탭을 삼키는 결함을 전부 통과시킨다.
+   * 실제로 2026-07-31에 더그아웃 교체가 마우스로 전혀 안 되는데도 자동 관문 43건이
+   * 초록이었다. 사람이 쓰는 입력 경로는 이 함수로 검사한다.
+   */
+  async pointerClickText(label) {
+    const box = await this.evaluate(`(() => {
+      const nodes = [...document.querySelectorAll("button, a, summary")];
+      const exact = nodes.find((node) => node.innerText.trim() === ${JSON.stringify(label)});
+      const loose = nodes.find((node) => node.innerText.includes(${JSON.stringify(label)}));
+      const target = exact ?? loose;
+      if (!target || target.disabled) return null;
+      target.scrollIntoView({ block: "center", inline: "center" });
+      const rect = target.getBoundingClientRect();
+      if (rect.width < 2 || rect.height < 2) return null;
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      return { x, y, reachable: hit === target || target.contains(hit) };
+    })()`);
+    if (box === null) return false;
+    if (!box.reachable) return false;
+    const common = { x: box.x, y: box.y, button: "left", buttons: 1, clickCount: 1, pointerType: "mouse" };
+    await this.send("Input.dispatchMouseEvent", { ...common, type: "mouseMoved", buttons: 0 });
+    await this.send("Input.dispatchMouseEvent", { ...common, type: "mousePressed" });
+    await this.send("Input.dispatchMouseEvent", { ...common, type: "mouseReleased", buttons: 0 });
+    return true;
+  }
+
   clickText(label) {
     return this.evaluate(`(() => {
       const nodes = [...document.querySelectorAll("button, a, summary")];

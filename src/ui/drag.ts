@@ -184,7 +184,11 @@ export function useDragController(config: DragConfig): DragController {
 
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLElement>, itemId: string): void => {
-      const result = dispatch(
+      // 포인터 캡처를 여기서 잡으면 안 된다. 캡처 대상은 이 핸들러가 붙은 오버레이라서
+      // 뒤따르는 pointerup이 오버레이로 재타깃되고, click의 공통 조상이 오버레이가 되면서
+      // 벤치 카드와 피치 선수의 onClick이 통째로 사라진다. 마우스 사용자는 교체를 아예 못 한다.
+      // 캡처는 실제로 드래그가 시작되는 순간(onPointerMove의 dragging 전이)에만 잡는다.
+      dispatch(
         {
           type: "down",
           pointerId: event.pointerId,
@@ -195,9 +199,6 @@ export function useDragController(config: DragConfig): DragController {
         },
         event.timeStamp,
       );
-      if (result.state.pointerId === event.pointerId) {
-        event.currentTarget.setPointerCapture(event.pointerId);
-      }
     },
     [dispatch],
   );
@@ -211,6 +212,11 @@ export function useDragController(config: DragConfig): DragController {
       );
 
       if (ownsPointer && result.state.phase === "dragging") {
+        // 드래그가 실제로 시작된 순간에만 캡처를 잡는다. 포인터가 요소 밖으로 나가도
+        // 이동과 놓기를 계속 받되, 단순 탭에서는 캡처가 없어 click이 정상 발생한다.
+        if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }
         event.preventDefault();
       }
     },

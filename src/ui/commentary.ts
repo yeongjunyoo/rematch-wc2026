@@ -13,11 +13,16 @@ import { squadFor } from "./squad";
  * 받침을 무시하면 "대한민국가 넣었습니다"처럼 읽는 순간 기계가 쓴 글이 된다.
  * 자동 플레이테스트에서 축구 팬이 정확히 그 문장을 지적했다.
  */
-function withParticle(word: string, withFinal: string, withoutFinal: string): string {
+export function withParticle(word: string, withFinal: string, withoutFinal: string): string {
   const last = word.trim().slice(-1);
   const code = last.charCodeAt(0);
   if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return `${word}${withoutFinal}`;
   return `${word}${(code - 0xac00) % 28 === 0 ? withoutFinal : withFinal}`;
+}
+
+/** 목적격 조사. "손흥민를 넣고"처럼 읽는 순간 사람이 안 쓴 문장이 된다. */
+export function objectParticle(word: string): string {
+  return withParticle(word, "을", "를");
 }
 
 /** 명단에서 확인되는 선수만 이름으로 부른다. 확인되지 않으면 이름을 지어내지 않는다. */
