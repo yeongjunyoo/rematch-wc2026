@@ -3,7 +3,7 @@ import { bestGrade, loadRecords } from "../domain/records";
 import type { DecidedPhase, GradeRequirement, Intervention, MatchEvent, MatchState, TerminalFacts } from "../domain/types";
 import { getScenario } from "../data/scenarios";
 import { useAgentSnapshot } from "../agent/bridge";
-import { clockLabel, commentaryFor, isHighlight } from "../ui/commentary";
+import { clockLabel, commentaryFor, isHighlight, topicParticle } from "../ui/commentary";
 import { recallResult } from "../ui/matchResult";
 import type { StoredMatchResult } from "../ui/matchResult";
 import { SceneArt } from "../ui/SceneArt";
@@ -33,8 +33,23 @@ function requirementLabel(requirement: GradeRequirement): string {
   }
 }
 
+/** 표 안의 사실 칸. 여기서 감정을 말하면 기록이 아니라 감상이 된다. */
 function resultLabel(terminal: TerminalFacts): string {
-  return terminal.userResult === "win" ? "우리가 이겼습니다" : terminal.userResult === "draw" ? "비겼습니다" : "우리가 졌습니다";
+  return terminal.userResult === "win" ? "승리" : terminal.userResult === "draw" ? "무승부" : "패배";
+}
+
+/**
+ * 헤드라인 한 줄. 같은 사실을 사실 칸과 다른 문체로 부른다.
+ * 이 제품이 파는 것은 스코어가 아니라 "역사를 건드렸다"는 감각이므로,
+ * 실제 역사와의 관계를 판정의 주어로 삼는다.
+ */
+function outcomeVerdict(terminal: TerminalFacts, actual: TerminalFacts): string {
+  const better = terminal.userGoals - terminal.opponentGoals > actual.userGoals - actual.opponentGoals;
+  const same = terminal.userGoals === actual.userGoals && terminal.opponentGoals === actual.opponentGoals;
+  if (terminal.userResult === "win") return better ? "역사를 바꿨다" : "이겼다";
+  if (terminal.userResult === "draw") return better ? "그날의 결말을 지웠다" : "비겼다";
+  if (same) return "역사는 그대로였다";
+  return better ? "역사를 밀어냈지만 넘지는 못했다" : "그날의 결과를 넘지 못했다";
 }
 
 function loadResult(scenarioId: string, attemptIndex: number): StoredMatchResult | null {
@@ -121,7 +136,7 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
         <>
           <section className="report-section rp-summary">
             <h2>나의 결과</h2>
-            <p className="rp-outcome">{resultLabel(mine)}, {comparison?.headline}</p>
+            <p className="rp-outcome"><strong>{outcomeVerdict(mine, scenario.actualTerminal)}.</strong> {comparison?.headline}</p>
             <p className="grade-result" aria-label={`등급 ${grade}`}>{grade} 등급</p>
             <ResultRows terminal={mine} scenarioId={scenarioId} />
             {previousBest === null || previousBest === grade ? null : <p className="best-grade">이 경기에서 남긴 최고 등급은 {previousBest}입니다.</p>}
@@ -156,7 +171,7 @@ export function Report({ scenarioId, attemptIndex }: ReportProps) {
               이 집계는 이어받은 시점 이후에 일어난 것만 센다. 그 사실을 밝히지 않으면
               최종 스코어 0대1 옆에 상대 득점 0골이 나란히 서서 사용자가 모순으로 읽는다.
             */}
-            <p className="rp-tally-scope">{scenario.interventionStartMinute}분에 이어받은 뒤 기록된 것만 셉니다. 그 전의 {scenario.startingUserGoals}대{scenario.startingOpponentGoals}은 이미 벌어진 일입니다.</p>
+            <p className="rp-tally-scope">{scenario.interventionStartMinute}분에 이어받은 뒤 기록된 것만 셉니다. 그 전의 {topicParticle(`${scenario.startingUserGoals}대${scenario.startingOpponentGoals}`)} 이미 벌어진 일입니다.</p>
             <dl className="rp-tally">
               <div><dt>우리 찬스</dt><dd>{(insight ?? tallyOnly)?.tally.userChances}번</dd></div>
               <div><dt>상대 찬스</dt><dd>{(insight ?? tallyOnly)?.tally.opponentChances}번</dd></div>

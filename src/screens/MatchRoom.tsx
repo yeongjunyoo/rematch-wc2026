@@ -9,7 +9,7 @@ import { evaluateGrade } from "../domain/outcome";
 import { NEUTRAL_DIRECTIVES } from "../domain/types";
 import type { FormationPreset, Intervention, MatchEvent, MatchState, Placement, ScenarioDeclaration, TacticalDirectives } from "../domain/types";
 import { DATA_VERSION, ENGINE_VERSION } from "../domain/version";
-import { clockLabel, commentaryFor, isFeedWorthy, phaseLabel } from "../ui/commentary";
+import { clockLabel, commentaryFor, directionParticle, isFeedWorthy, phaseLabel, withParticle } from "../ui/commentary";
 import { defaultFormation, initialPlacements, squadFor } from "../ui/squad";
 import { rememberResult } from "../ui/matchResult";
 import { matchHash, reportHash } from "../router";
@@ -333,7 +333,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
       <header className="screen-header">
         <p className="eyebrow">매치룸, {attemptIndex + 1}번째 시도</p>
         <h1>{scenario.userTeam.displayName} 대 {scenario.opponentTeam.displayName}</h1>
-        <p className="match-history-line">실제로는 {scenario.actualTerminal.userGoals}대{scenario.actualTerminal.opponentGoals}로 끝난 경기입니다. 지금 점수는 위 기록판을 보세요.</p>
+        <p className="match-history-line">실제로는 {directionParticle(`${scenario.actualTerminal.userGoals}대${scenario.actualTerminal.opponentGoals}`)} 끝난 경기입니다. 지금 점수는 위 기록판을 보세요.</p>
       </header>
 
       <MatchHud
@@ -361,7 +361,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
         onSkip={skipToEnd}
       />
 
-      <section className="match-stage" aria-label="경기 화면">
+      <section className={`match-stage${beat === null ? "" : ` stage-${beat.tone}`}`} aria-label="경기 화면">
         <LivePitch
           userPlayers={userPitchPlayers(scenario.id, placements, keyPlayerIdsFrom(scenario, runtime.state.events))}
           opponentPlayers={opponentPitchPlayers(scenario)}
@@ -380,7 +380,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
         {decisionPrompt && !finished ? (
           <div className="kickoff-overlay decision-prompt">
             <p className="eyebrow">{runtime.state.clock.absoluteMinute}분, 아직 아무것도 바꾸지 않았습니다</p>
-            <strong>지금 바꾸지 않으면 남은 시간은 그냥 흘러갑니다.</strong>
+            <strong>지금 움직이지 않으면 역사는 그대로 반복된다.</strong>
             <div className="kickoff-actions">
               {quickSub === null ? null : (
                 <button type="button" className="kickoff-primary" onClick={applyQuickSubstitution}>{quickSub.incoming} 투입</button>
@@ -393,7 +393,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
         ) : null}
         {!started && !finished ? (
           <div className="kickoff-overlay">
-            <p className="eyebrow">{scenario.interventionStartMinute}분, 당신이 벤치를 이어받았습니다</p>
+            <p className="eyebrow">{scenario.interventionStartMinute}분. 벤치를 이어받았다</p>
             <strong>{scenario.mission.brief}</strong>
             {/*
               자동 플레이테스트에서 캐주얼 페르소나가 두 번 연속 개입을 발견하지 못하고
@@ -404,7 +404,7 @@ export function MatchRoom({ scenarioId, attemptIndex }: MatchRoomProps) {
             <div className="kickoff-actions">
               <button type="button" className="kickoff-primary" onClick={openDugout}>전술 바꾸기</button>
             </div>
-            <span>전술을 바꾸지 않으면 역사를 바꿀 기회도 없습니다. 개입 토큰 {tokensRemaining}개를 쓸 수 있습니다. 그냥 지켜보려면 위의 경기 재개를 누르세요.</span>
+            <span>전술을 바꾸지 않으면 역사를 바꿀 기회도 없습니다. 개입 토큰 {tokensRemaining}개를 쓸 수 있습니다. 그냥 지켜보려면 경기 재개를 누르세요.</span>
           </div>
         ) : null}
         {!finished ? null : (
@@ -516,12 +516,12 @@ function beatFor(fresh: readonly MatchEvent[], scenario: ScenarioDeclaration, de
       ? ` 전술을 바꾼 지 ${sinceDecision}분 만입니다.`
       : "";
     return goal.side === "user"
-      ? { tone: "goal", headline: "골", detail: `${scenario.userTeam.displayName}가 흐름을 뒤집습니다.${credit}` }
-      : { tone: "concede", headline: "실점", detail: `${scenario.opponentTeam.displayName}가 앞서갑니다.` };
+      ? { tone: "goal", headline: "골!", detail: `${withParticle(scenario.userTeam.displayName, "이", "가")} 흐름을 뒤집습니다.${credit}` }
+      : { tone: "concede", headline: "실점", detail: `${withParticle(scenario.opponentTeam.displayName, "이", "가")} 앞서갑니다.` };
   }
   const counter = fresh.find((event) => event.type === "aiCounter");
   if (counter !== undefined && counter.type === "aiCounter") {
-    return { tone: "counter", headline: "상대 벤치가 움직입니다", detail: `${counter.counteredWhat}. 대신 ${counter.exposedWeakness}가 열립니다.` };
+    return { tone: "counter", headline: "상대 벤치가 움직입니다", detail: `${counter.counteredWhat}. 대신 ${withParticle(counter.exposedWeakness, "이", "가")} 열립니다.` };
   }
   return null;
 }

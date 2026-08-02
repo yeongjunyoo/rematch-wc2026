@@ -2,10 +2,11 @@ import { SCENARIOS } from "../data/scenarios";
 import { SceneArt } from "../ui/SceneArt";
 import { TeamCrest } from "../ui/TeamCrest";
 import { useAgentSnapshot } from "../agent/bridge";
+import { topicParticle } from "../ui/commentary";
 import "../ui/home.css";
 
 function scenarioActionLabel(scenario: (typeof SCENARIOS)[number]): string {
-  return `${scenario.userTeam.displayName} 벤치, ${scenario.interventionStartMinute}분`;
+  return `${scenario.userTeam.displayName} 벤치 이어받기`;
 }
 
 const SCENARIO_AFFORDANCES = SCENARIOS.map(scenarioActionLabel);
@@ -19,8 +20,8 @@ const FEATURED = SCENARIOS[0]!;
  */
 function situationLine(scenario: (typeof SCENARIOS)[number]): string {
   const { startingUserGoals: mine, startingOpponentGoals: theirs } = scenario;
-  const standing = mine < theirs ? "지고 있습니다" : mine > theirs ? "이기고 있습니다" : "비기고 있습니다";
-  return `${scenario.interventionStartMinute}분, ${scenario.userTeam.displayName}은 ${mine}대${theirs}로 ${standing}.`;
+  const standing = mine < theirs ? "지고 있다" : mine > theirs ? "이기고 있다" : "비기고 있다";
+  return `${scenario.interventionStartMinute}분, ${topicParticle(scenario.userTeam.displayName)} ${mine}대${theirs}로 ${standing}. 여기서부터 벤치는 내 것이다.`;
 }
 
 export function Home() {
@@ -47,13 +48,13 @@ export function Home() {
 
       <section aria-labelledby="scenario-heading">
         <div className="section-heading hm-section-heading">
-          <p className="eyebrow">먼저, 이 한 경기를 지휘하세요</p>
-          <h2 id="scenario-heading">{FEATURED.interventionStartMinute}분, 당신의 선택이 시작됩니다</h2>
+          <p className="eyebrow">다섯 개의 실화</p>
+          <h2 id="scenario-heading">{FEATURED.interventionStartMinute}분, 벤치가 열린다</h2>
         </div>
         <div className="hm-grid">
           {SCENARIOS.map((scenario, index) => (
             <article className={`hm-card${index === 0 ? " hm-card-featured" : ""}`} key={scenario.id}>
-              {index === 0 ? <p className="hm-featured-label">첫 번째 리매치</p> : null}
+              {index === 0 ? <p className="hm-featured-label">지금 이 경기</p> : null}
               <h3 className="hm-matchup">
                 <TeamCrest crestKey={scenario.userTeam.crestKey} teamName={scenario.userTeam.displayName} size="small" />
                 {scenario.userTeam.displayName} 대 {scenario.opponentTeam.displayName}

@@ -79,8 +79,8 @@ export function compareToHistory(
   return {
     changed,
     headline: changed
-      ? "당신의 선택이 경기의 기억을 새롭게 썼습니다."
-      : "당신은 그날의 결과를 정면으로 마주했습니다.",
+      ? "그날의 기억이 다시 쓰였다."
+      : "그날의 결과는 끝내 그대로였다.",
     deltaGoals,
   };
 }

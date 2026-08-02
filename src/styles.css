@@ -67,6 +67,33 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
 .beat-overlay.is-concede { background: rgba(122,52,40,.96); }
 .beat-overlay.is-counter { background: rgba(74,64,30,.96); }
 .beat-overlay.is-final { background: rgba(30,37,40,.96); }
+
+/*
+  사건이 일어난 순간에 화면이 반응하지 않으면 재생되는 표에 가깝다.
+  골과 실점은 이 제품이 파는 감정이므로 무대 전체가 한 번 반응한다.
+  세 번 이상 점멸하지 않고(WCAG 2.3.1) 동작 축소 설정을 존중한다.
+*/
+.match-stage { position: relative; }
+.match-stage::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  border-radius: .5rem; opacity: 0; background: #fff;
+}
+.match-stage.stage-goal::after { animation: stage-flash .5s ease-out 1; }
+.match-stage.stage-concede::after { background: #7a3428; animation: stage-flash .5s ease-out 1; }
+.match-stage.stage-goal { animation: stage-shake .34s ease-out 1; }
+@keyframes stage-flash { 0% { opacity: .42; } 100% { opacity: 0; } }
+@keyframes stage-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  25% { transform: translate3d(-4px, 0, 0); }
+  75% { transform: translate3d(4px, 0, 0); }
+}
+.beat-overlay.is-goal strong, .beat-overlay.is-concede strong { animation: beat-pop .34s cubic-bezier(.2, 1.6, .4, 1) 1; }
+@keyframes beat-pop { 0% { transform: scale(.86); opacity: .4; } 100% { transform: scale(1); opacity: 1; } }
+.beat-overlay.is-goal strong { font-size: 1.55rem; letter-spacing: -.04em; }
+@media (prefers-reduced-motion: reduce) {
+  .match-stage.stage-goal, .match-stage.stage-goal::after, .match-stage.stage-concede::after,
+  .beat-overlay.is-goal strong, .beat-overlay.is-concede strong { animation: none; }
+}
 .kickoff-overlay .eyebrow { color: #d8f0a4; margin-bottom: .2rem; }.kickoff-overlay strong { font-size: 1.02rem; line-height: 1.5; }
 .feed-empty { color: #62706d; }
 .event-feed b { display: inline-block; min-width: 3.4rem; color: #0d6261; font-variant-numeric: tabular-nums; }

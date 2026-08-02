@@ -2,6 +2,7 @@ import { NEUTRAL_DIRECTIVES } from "../domain/types";
 import type { FormationPreset, Intervention, MatchEvent, Placement, ScenarioDeclaration, TacticalDirectives, TerminalFacts } from "../domain/types";
 import { directiveWeights } from "../domain/ratings";
 import { defaultFormation, initialPlacements, squadFor } from "./squad";
+import { directionParticle } from "./commentary";
 
 export interface DecisionSummary {
   readonly tokenIndex: number;
@@ -111,7 +112,7 @@ function decisionFor(intervention: Intervention, previous: EditorState, players:
   const changes = [...substitutions, ...formation, ...directives, ...placements];
   const headlineParts = [
     ...intervention.substitutions.map((substitution) => `${labelFor(players, substitution.inId)} 투입`),
-    ...formation.map(() => `${intervention.formation}로 전환`),
+    ...formation.map(() => `${directionParticle(intervention.formation)} 전환`),
     ...directives,
     ...placements,
   ];

@@ -7,7 +7,7 @@ import type { FormationPreset, Intervention, Placement, TacticalDirectives } fro
 import { diffIntervention } from "../domain/rng";
 import { DRAG_HANDLE_STYLE, SCROLL_REGION_STYLE, useDragController } from "../ui/drag";
 import { squadFor } from "../ui/squad";
-import { objectParticle } from "../ui/commentary";
+import { directionParticle, objectParticle } from "../ui/commentary";
 
 interface DugoutProps {
   scenarioId: string;
@@ -93,7 +93,7 @@ export function Dugout({ scenarioId, tokenIndex, minute, cardsUsedBefore, initia
         before.midfielders === after.midfielders ? null : `미드필더 ${before.midfielders}명에서 ${after.midfielders}명`,
         before.forwards === after.forwards ? null : `공격수 ${before.forwards}명에서 ${after.forwards}명`,
       ].filter((part): part is string => part !== null);
-      return `${initialFormation}에서 ${formation}으로 바꿨습니다.${parts.length === 0 ? "" : ` ${parts.join(", ")}.`}`;
+      return `${initialFormation}에서 ${directionParticle(formation)} 바꿨습니다.${parts.length === 0 ? "" : ` ${parts.join(", ")}.`}`;
     })();
 
   const statusGuide = cardsRemaining === 0

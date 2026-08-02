@@ -12,12 +12,57 @@ import { squadFor } from "./squad";
  * 한국어 조사 선택.
  * 받침을 무시하면 "대한민국가 넣었습니다"처럼 읽는 순간 기계가 쓴 글이 된다.
  * 자동 플레이테스트에서 축구 팬이 정확히 그 문장을 지적했다.
+ *
+ * 한글만 보면 부족하다. 이 화면에는 스코어("0대1")와 포메이션("4-3-3")처럼
+ * 숫자로 끝나는 말이 그대로 조사를 받는다. 숫자의 받침은 글자가 아니라 읽는 소리로
+ * 정해지므로("3"은 삼이라 받침이 있고 "2"는 이라서 없다) 발음표로 판정한다.
  */
-export function withParticle(word: string, withFinal: string, withoutFinal: string): string {
+const DIGIT_HAS_FINAL: Readonly<Record<string, boolean>> = {
+  // 영 일 삼 육 칠 팔 = 받침 있음, 이 사 오 구 = 없음
+  "0": true, "1": true, "2": false, "3": true, "4": false,
+  "5": false, "6": true, "7": true, "8": true, "9": false,
+};
+
+/** 받침이 있으면 true. 판정할 수 없는 글자는 받침 없음으로 둔다. */
+export function hasFinalConsonant(word: string): boolean {
   const last = word.trim().slice(-1);
+  if (last === "") return false;
+  if (last in DIGIT_HAS_FINAL) return DIGIT_HAS_FINAL[last]!;
   const code = last.charCodeAt(0);
-  if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return `${word}${withoutFinal}`;
-  return `${word}${(code - 0xac00) % 28 === 0 ? withoutFinal : withFinal}`;
+  if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return false;
+  return (code - 0xac00) % 28 !== 0;
+}
+
+export function withParticle(word: string, withFinal: string, withoutFinal: string): string {
+  return `${word}${hasFinalConsonant(word) ? withFinal : withoutFinal}`;
+}
+
+/**
+ * 방향격 조사. 받침 유무만으로는 틀린다.
+ * ㄹ 받침 뒤에는 "으로"가 아니라 "로"를 쓴다 — "일로", "팔로"이지 "일으로"가 아니다.
+ * 스코어 0대1과 포메이션 4-3-3이 둘 다 이 한 줄을 지나간다.
+ */
+export function directionParticle(word: string): string {
+  const last = word.trim().slice(-1);
+  const rieulDigits = new Set(["1", "7", "8"]);
+  if (last in DIGIT_HAS_FINAL) {
+    return `${word}${DIGIT_HAS_FINAL[last] && !rieulDigits.has(last) ? "으로" : "로"}`;
+  }
+  const code = last.charCodeAt(0);
+  const isHangul = !Number.isNaN(code) && code >= 0xac00 && code <= 0xd7a3;
+  const finalIndex = isHangul ? (code - 0xac00) % 28 : 0;
+  // 종성 인덱스 8 = ㄹ
+  return `${word}${finalIndex === 0 || finalIndex === 8 ? "로" : "으로"}`;
+}
+
+/** 주격 조사. */
+export function subjectParticle(word: string): string {
+  return withParticle(word, "이", "가");
+}
+
+/** 보조사. */
+export function topicParticle(word: string): string {
+  return withParticle(word, "은", "는");
 }
 
 /** 목적격 조사. "손흥민를 넣고"처럼 읽는 순간 사람이 안 쓴 문장이 된다. */
@@ -57,17 +102,17 @@ export function commentaryFor(event: MatchEvent, scenario: ScenarioDeclaration):
       const scorer = event.side === "user" ? playerName(scenario, event.scorerId) : null;
       if (event.side === "user") {
         return scorer === null
-          ? `골. ${withParticle(us, "이", "가")} 넣었습니다.`
-          : `골. ${withParticle(scorer, "이", "가")} 넣었습니다.`;
+          ? `골! ${us} 득점입니다.`
+          : `골! ${scorer}입니다.`;
       }
-      return `실점. ${withParticle(them, "이", "가")} 넣었습니다.`;
+      return `실점입니다. ${withParticle(them, "이", "가")} 골망을 흔듭니다.`;
     }
     case "chance": {
       const shooter = event.side === "user" ? playerName(scenario, event.shooterId) : null;
       const actor = shooter ?? teamOf(event.side);
       return event.converted
-        ? `${actor}의 결정적 장면이 골로 이어집니다.`
-        : `${withParticle(actor, "이", "가")} 기회를 만들었지만 마무리가 빗나갑니다.`;
+        ? `${actor}의 마무리가 그물을 가릅니다.`
+        : `${withParticle(actor, "이", "가")} 때렸지만 빗나갑니다.`;
     }
     case "card":
       return `${teamOf(event.side)} 경고.`;
@@ -82,12 +127,12 @@ export function commentaryFor(event: MatchEvent, scenario: ScenarioDeclaration):
       if (incoming === undefined || outgoing === undefined) {
         return `교체. ${outgoing ?? event.outId} 대신 ${incoming ?? event.inId} 투입. 명단에서 확인되지 않은 식별자입니다.`;
       }
-      return `교체. ${outgoing} 대신 ${incoming} 투입.`;
+      return `${incoming} 투입! ${withParticle(outgoing, "이", "가")} 나갑니다.`;
     }
     case "intervention":
       return event.summary;
     case "aiCounter":
-      return `상대 벤치가 반응합니다. ${event.counteredWhat}. 대신 ${withParticle(event.exposedWeakness, "이", "가")} 열립니다.`;
+      return `상대 벤치가 움직입니다. ${event.counteredWhat}. 대신 ${withParticle(event.exposedWeakness, "이", "가")} 열립니다.`;
     case "penaltyAttempt":
       return event.result === "scored"
         ? `${teamOf(event.side)} 성공.`
