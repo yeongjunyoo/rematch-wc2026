@@ -130,7 +130,18 @@ export function killBrowser(handle) {
   } catch {
     // 이미 종료됨
   }
-  rmSync(handle.profile, { recursive: true, force: true });
+  // 윈도우는 프로세스를 죽인 직후에도 프로필 안의 파일 핸들을 잠시 붙들고 있어서
+  // 즉시 지우면 EPERM이 난다. 몇 번 기다렸다 지우고, 그래도 안 되면 포기한다.
+  // 임시 프로필이 남는 것은 무해하지만, 여기서 던지면 전부 통과한 관문이 실패로 보인다.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      rmSync(handle.profile, { recursive: true, force: true });
+      return;
+    } catch {
+      const until = Date.now() + 200;
+      while (Date.now() < until) { /* 동기 대기 — finally 블록이라 await를 쓸 수 없다 */ }
+    }
+  }
 }
 
 function normalizeHash(hash) {
