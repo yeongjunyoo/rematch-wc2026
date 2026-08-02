@@ -22,6 +22,8 @@ W, H, FPS = 1280, 720, 30
 ROOT = Path(__file__).resolve().parent
 URL = "https://rematch-wc2026.vercel.app"
 VOICE = "ko-KR-InJoonNeural"
+# 플레이 화면 아래에 두는 자막 전용 띠의 높이(px). 화면을 가리지 않는 값의 정본이다.
+CAPTION_BAND = 76
 CAPTION_MIN_SECONDS = 1.5
 CAPTION_MAX_CPS = 17.0
 
@@ -138,12 +140,16 @@ def cut_beat(raw: Path, out: Path, start: float, length: float, caption: str | N
     "무슨 경기를 보고 있는지"가 사라진다. 근거 = NAN 2026 「18 플레이 영상 도시에」
     ①-6, 캡션은 화면 글자와 겹치지 않는 하단 단색 밴드에 둔다.
     """
-    vf = "null"
+    # 자막을 화면 위에 얹으면 컷마다 덮는 대상만 바뀐다. 상단에 두면 경기명을,
+    # 하단에 두면 홈 헤딩과 피치 아래쪽을 가렸다. 그래서 자막을 화면 밖으로 뺀다 —
+    # 플레이 화면을 세로로 줄여 위에 놓고, 남은 아래 띠를 자막 전용으로 쓴다.
+    # 캡션이 없는 컷도 같은 비율로 줄여야 컷 사이에 화면 크기가 튀지 않는다.
+    stage_h = H - CAPTION_BAND
+    vf = f"scale={W}:{stage_h}:flags=bicubic,pad={W}:{H}:0:0:color=#12211e"
     if caption:
-        vf = (
-            "drawbox=x=0:y=ih-84:w=iw:h=84:color=#12211e@0.82:t=fill,"
-            f"drawtext=fontfile='{FONT_ESC}':text='{esc(caption)}':fontsize=30:fontcolor=#f4f5f2:"
-            "x=(w-text_w)/2:y=h-56"
+        vf += (
+            f",drawtext=fontfile='{FONT_ESC}':text='{esc(caption)}':fontsize=30:fontcolor=#f4f5f2:"
+            f"x=(w-text_w)/2:y={stage_h + (CAPTION_BAND - 34) // 2}"
         )
     run(["ffmpeg", "-v", "error", "-y", "-ss", f"{start:.2f}", "-t", f"{length:.2f}",
          "-i", str(raw), "-vf", vf, "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
