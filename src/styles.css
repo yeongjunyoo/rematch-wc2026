@@ -73,7 +73,14 @@ table { width: 100%; border-collapse: collapse; }th, td { padding: 0.75rem; text
   골과 실점은 이 제품이 파는 감정이므로 무대 전체가 한 번 반응한다.
   세 번 이상 점멸하지 않고(WCAG 2.3.1) 동작 축소 설정을 존중한다.
 */
-.match-stage { position: relative; }
+.match-stage {
+  position: relative;
+  padding: .55rem;
+  border: 1px solid #123029;
+  border-top: 0;
+  border-radius: 0 0 .7rem .7rem;
+  background: #10231f;
+}
 .match-stage::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   border-radius: .5rem; opacity: 0; background: #fff;

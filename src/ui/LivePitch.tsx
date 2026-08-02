@@ -74,10 +74,19 @@ function PlayerTokens({ players, side, countering }: PlayerTokensProps): React.J
         const point = pitchPoint(player);
         return (
           <g key={player.id} className={`lp-player${player.isKeyPlayer ? " lp-player-key" : ""}`} transform={`translate(${point.x} ${point.y})`}>
+            {/* 강조 링(r 3.25)이 기본 이름표 자리(y 4.75)를 파고들어 글자를 갉아먹었다.
+                손흥민은 항상 핵심 선수라 이 결함이 이 제품의 주인공에게 상시로 걸렸다.
+                링을 줄이는 대신 이름표를 링 바깥으로 내린다. */}
             {player.isKeyPlayer && <circle className="lp-key-ring" r="3.25" />}
             <circle className="lp-player-shirt" r="2.35" />
             <path className="lp-player-stripe" d="M-1.15 -1.4h2.3v2.8h-2.3z" />
-            <text className="lp-player-label" y="4.75">{shortLabel(player.label)}</text>
+            {/*
+              상대 토큰의 포지션 약어는 우리 선수 이름표 옆에 붙어 "F김민재"처럼 읽히게 만들었다.
+              전술판에서 두 팀은 필연적으로 근접하므로 좌표만으로는 못 막는다.
+              약어의 정보 가치는 낮고 팀 색과 모양이 이미 구분을 주므로 그리지 않는다.
+              화면 낭독용 설명(aria-label)에는 상대 포지션이 그대로 남는다.
+            */}
+            {side === "user" && <text className="lp-player-label" y={player.isKeyPlayer ? 5.85 : 4.75}>{shortLabel(player.label)}</text>}
           </g>
         );
       })}
@@ -122,12 +131,17 @@ export function LivePitch(props: LivePitchProps): React.JSX.Element {
         {(emphasis === "userGoal" || emphasis === "opponentGoal") && (
           <rect className="lp-goal-flash" x={FIELD.x} y={FIELD.y} width={FIELD.width} height={FIELD.height} rx="1.5" aria-hidden="true" />
         )}
-        <PlayerTokens players={opponentPlayers} side="opponent" countering={emphasis === "counter"} />
-        <PlayerTokens players={userPlayers} side="user" countering={false} />
+        {/*
+          초점은 "마지막 사건이 어느 진영에서 일어났나"의 배경 힌트다.
+          선수 토큰보다 위에 그리면 그 자리에 선 선수의 이름표를 링이 갉아먹는다.
+          중앙 초점(50, 50)일 때 중앙 미드필더 이름이 실제로 그렇게 깨져 보였다.
+        */}
         <g className="lp-focus" transform={`translate(${focusPoint.x} ${focusPoint.y})`} aria-hidden="true">
           <circle className="lp-focus-ring" r="3.8" />
           <circle className="lp-focus-center" r="1.15" />
         </g>
+        <PlayerTokens players={opponentPlayers} side="opponent" countering={emphasis === "counter"} />
+        <PlayerTokens players={userPlayers} side="user" countering={false} />
         {caption !== null && (
           <g className="lp-caption" aria-hidden="true">
             <rect x="31" y="5.3" width="43" height="6.4" rx="1.4" />

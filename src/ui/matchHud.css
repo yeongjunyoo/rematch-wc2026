@@ -1,13 +1,19 @@
+/*
+  기록판과 무대를 한 덩어리의 어두운 중계석으로 묶는다.
+  밝은 문서 배경 위에 초록 피치만 얹혀 있으면 화면이 게임이 아니라 리포트로 읽힌다.
+  자동 플레이테스트가 아니라 사람 눈으로 잡은 문제다.
+*/
 .mh-hud {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) auto minmax(15rem, 1fr);
   gap: .75rem 1rem;
   align-items: center;
   padding: 1rem;
-  border: 1px solid #cbd1cd;
-  border-radius: .7rem;
-  background: #fafbf8;
-  color: #1e2528;
+  border: 1px solid #123029;
+  border-radius: .7rem .7rem 0 0;
+  border-bottom: 0;
+  background: #10231f;
+  color: #eef3ef;
 }
 
 .mh-scoreboard {
@@ -16,7 +22,7 @@
   gap: .6rem;
   align-items: center;
   min-width: 0;
-  padding: .8rem 1rem;
+  padding: .85rem 1.1rem;
   border-radius: .5rem;
   background: #173c37;
   color: #fff;
@@ -227,16 +233,17 @@
   gap: .5rem;
   align-items: center;
   padding-top: .75rem;
-  border-top: 1px solid #dde1de;
+  border-top: 1px solid #1d4038;
 }
 
+/* 중계석이 어두워졌으므로 그 안의 조작도 어두운 판 위의 버튼이 된다. */
 .mh-play-button,
 .mh-skip-button,
 .mh-speed-group button {
   padding: .6rem .8rem;
-  border: 1px solid #9caaa6;
-  background: #fff;
-  color: #1e2528;
+  border: 1px solid #3c5b53;
+  background: #1a332e;
+  color: #eef3ef;
 }
 
 .mh-speed-group {
@@ -245,9 +252,9 @@
 }
 
 .mh-speed-group button[aria-pressed="true"] {
-  border-color: #173c37;
-  background: #173c37;
-  color: #fff;
+  border-color: #d8f0a4;
+  background: #d8f0a4;
+  color: #10231f;
 }
 
 .mh-dugout-button:focus-visible,
@@ -262,9 +269,9 @@
 .mh-play-button:disabled,
 .mh-skip-button:disabled,
 .mh-speed-group button:disabled {
-  border-color: #cbd1cd;
-  background: #dde1de;
-  color: #62706d;
+  border-color: #2b4a40;
+  background: #16302a;
+  color: #7f948d;
   box-shadow: none;
   cursor: not-allowed;
 }
@@ -383,12 +390,12 @@
 .mh-skip-button {
   background: transparent;
   border-color: transparent;
-  color: #62706d;
+  color: #9db3ac;
   font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 0.2em;
 }
 
 .mh-skip-button:hover:not(:disabled) {
-  color: #1e2528;
+  color: #eef3ef;
 }

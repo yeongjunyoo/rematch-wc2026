@@ -50,7 +50,16 @@ export function userPitchPlayers(
  *
  * 상대 선발 명단은 출처로 확인되지 않았으므로 이름을 지어내지 않고 포지션 라벨만 쓴다.
  * 대형은 시나리오가 데이터로 선언한 값을 읽는다.
+ *
+ * 깊이를 그대로 뒤집으면(100 - x) 두 팀의 같은 역할이 **정확히 같은 점**에 선다.
+ * 중앙 미드필더끼리 겹쳐 이름표가 서로를 덮었고, 화면에서 "황인범"이 "황안검"으로 읽혔다.
+ * 사람 눈으로 잡은 결함이다. 그래서 상대는 자기 진영 쪽으로 눌러 배치한다 —
+ * 골키퍼는 골문에 그대로 두고 최전방이 중앙선 근처에서 멈춘다.
+ * 두 팀이 마주 보는 그림은 유지되면서 라벨 충돌만 사라진다.
  */
+const OPPONENT_GOAL_X = 95;
+const OPPONENT_DEPTH_SCALE = 0.44;
+
 export function opponentPitchPlayers(scenario: ScenarioDeclaration): readonly LivePitchPlayer[] {
   return FORMATION_SLOTS[scenario.opponentFormation].map((slot, index) => {
     const role = slotRole(slot);
@@ -58,8 +67,8 @@ export function opponentPitchPlayers(scenario: ScenarioDeclaration): readonly Li
       id: `opponent-${index + 1}`,
       label: role,
       position: role,
-      // 상대는 반대 방향으로 공격한다. 깊이를 뒤집어야 두 팀이 마주 본다.
-      x: clamp(100 - slot.x, PITCH_MIN_X, PITCH_MAX_X),
+      // 상대는 반대 방향으로 공격한다. 깊이를 뒤집되 자기 진영 쪽으로 눌러 겹침을 없앤다.
+      x: clamp(OPPONENT_GOAL_X - (slot.x - 5) * OPPONENT_DEPTH_SCALE, PITCH_MIN_X, PITCH_MAX_X),
       y: clamp(100 - slot.y, PITCH_MIN_Y, PITCH_MAX_Y),
       isKeyPlayer: false,
     };

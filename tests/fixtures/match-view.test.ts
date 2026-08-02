@@ -46,6 +46,23 @@ describe("경기 화면 좌표 변환", () => {
       expect(opponentPitchPlayers(scenario)).toHaveLength(11);
       expect(userGoalkeeper?.x).toBe(5);
       expect(opponentGoalkeeper?.x).toBe(95);
+
+      // 이름표가 서로를 덮으면 화면에서 글자가 깨져 읽힌다. 08-03에 "황인범"이
+      // 상대 미드필더와 겹쳐 "황안검"으로 읽혔다. 사람 눈으로만 잡히던 결함이다.
+      //
+      // 상대 토큰은 이름표를 그리지 않으므로(LivePitch) 충돌 대상은 우리 선수끼리다.
+      // 상대와의 근접 자체는 전술판에서 자연스러운 일이라 막지 않는다.
+      const ours = userPitchPlayers(scenario.id, initialPlacements(scenario.id), new Set());
+      const MIN_SEPARATION = 6;
+      for (const [index, mine] of ours.entries()) {
+        for (const other of ours.slice(index + 1)) {
+          const distance = Math.hypot(mine.x - other.x, mine.y - other.y);
+          expect(
+            distance,
+            `${scenario.id}: ${mine.label}(${mine.x.toFixed(1)}, ${mine.y.toFixed(1)})와 ${other.label}(${other.x.toFixed(1)}, ${other.y.toFixed(1)})의 이름표가 겹친다`,
+          ).toBeGreaterThan(MIN_SEPARATION);
+        }
+      }
     }
   });
 
