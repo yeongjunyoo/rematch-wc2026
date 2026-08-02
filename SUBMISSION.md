@@ -10,7 +10,7 @@ DAKER 월간 해커톤 「내가 축구 감독이라면」. 하드 마감 **2026
 |---|---|---|---|
 | 배포 URL | 준비됨 | `https://rematch-wc2026.vercel.app` | 최종 제출 폼에 입력 |
 | GitHub 저장소 | **공개됨** (2026-08-03 00:1x) | `https://github.com/yeongjunyoo/rematch-wc2026` | 없음. 로그아웃 상태에서 저장소 페이지와 API와 raw README 전부 200 확인 |
-| YouTube 시연영상 | **업로드됨, 미등록 공개** (2026-08-03 00:1x) | `https://youtu.be/CKUmj5SzDvw` | 없음. 로그아웃 상태에서 oEmbed와 시청 페이지 200 확인. 전체 공개로 돌릴지는 판단 사항 |
+| YouTube 시연영상 | **업로드됨, 미등록 공개** (2026-08-03 02:3x, 재제작본) | `https://youtu.be/6-e_48plRAg` | 없음. 로그아웃 상태에서 oEmbed 200 확인. 구 영상 `CKUmj5SzDvw`는 비공개 처리했다. 전체 공개 전환과 내레이션 음성 선택은 판단 사항 |
 
 ## 사람이 해야 하는 것
 
@@ -31,7 +31,8 @@ DAKER 월간 해커톤 「내가 축구 감독이라면」. 하드 마감 **2026
 
 ## 시연영상
 
-파일은 `packaging/_footage/20260731-170833/REMATCH_시연영상.mp4` (50.4초, 1280x720, 2.7MB)이고 설명 문안은 `packaging/youtube-description.txt`입니다.
+파일은 `packaging/_footage/20260803-012148/REMATCH_시연영상.mp4` (48.2초, 1280x720, 5.1Mbps, 30.7MB)이고 설명 문안은 `packaging/youtube-description.txt`입니다.
+편집 근거는 `packaging/VIDEO-PLAN.md`, 내레이션 음성 후보 비교는 `packaging/_tts/REPORT.md`에 있습니다.
 요강이 요구하는 네 가지가 모두 들어 있습니다.
 
 - 시작 화면 (다섯 미션 목록)

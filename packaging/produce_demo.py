@@ -1,58 +1,56 @@
 # -*- coding: utf-8 -*-
-"""REMATCH 시연영상 마감본 — raw 워크스루에 훅 카드·캡션·내레이션·엔드 카드를 얹는다.
+"""REMATCH 시연영상 마감본 — 실제 플레이를 먼저 보여 주는 45~60초 컷다운.
 
-원칙(vault HarnessLab 리텐션 기준 + KB FFAC 크리틱 8라운드에서 남은 것):
-  - 하드컷만. 전 컷 페이드는 아마추어 신호다.
-  - 캡션은 화면 글자와 겹치지 않는 하단 단색 밴드에.
-  - 내레이션은 자기 구간 안에서 끝난다. 넘치면 문장을 줄이지 창을 늘리지 않는다.
-  - 파이프라인은 자기 산출물을 소스로 먹지 않는다. 소스는 항상 raw.mp4.
-
-  python packaging/produce_demo.py packaging/_footage/<run>
+python packaging/produce_demo.py packaging/_footage/<run>
 """
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+# 윈도우 콘솔 기본 코드페이지(cp949)에서는 em dash 같은 글자가 UnicodeEncodeError를 낸다.
+# 게이트가 잡은 진단을 출력하다 스크립트가 죽으면 게이트가 없는 것만 못하다.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 W, H, FPS = 1280, 720, 30
 ROOT = Path(__file__).resolve().parent
 URL = "https://rematch-wc2026.vercel.app"
 VOICE = "ko-KR-InJoonNeural"
+CAPTION_MIN_SECONDS = 1.5
+CAPTION_MAX_CPS = 17.0
 
-# 훅 카드 (초, 화면 문구). 0~4초가 이탈이 갈리는 구간이라 문제부터 던진다.
-HOOK = [
-    (3.4, "2026 월드컵 남아공전, 63분", "손흥민은 벤치에 있었다"),
-    (3.0, "대한민국 0 : 1", "그리고 아무것도 되돌릴 수 없었다"),
-]
-
-# (raw 시작초, 길이, 캡션). raw marks.txt 구간에 맞춘다.
+# (raw 시작초, 길이, 선택 캡션). None은 화면과 내레이션만으로 읽히는 구간이다.
+# 구간은 record_demo.py의 20260803 녹화 표식에 맞춘다. 긴 상호작용과 리포트에 체류한다.
 BEATS = [
-    (1.6, 5.4, "다섯 개의 실화. 되돌리고 싶은 순간을 고른다"),
-    (7.0, 5.0, "실제 결과를 먼저 보여주고 그 지점에서 멈춘다"),
-    (12.0, 4.4, "더그아웃에서 선수 배치와 전술을 바꾼다"),
-    (16.4, 5.6, "벤치에서 손흥민을 고르고 뺄 선수를 누른다"),
-    (22.0, 6.0, "개입을 확정하면 경기가 다시 흐른다. 토큰은 세 장뿐"),
-    (28.0, 6.0, "종료까지 진행하면 결과 리포트가 나온다"),
-    (34.5, 5.5, "내가 바꾼 것과 실제 역사가 나란히 놓인다"),
-    (40.2, 2.6, "다섯 경기, 다섯 개의 다른 결말"),
+    (3.50, 3.40, "63분, 선택은 지금부터"),
+    (5.50, 2.60, None),
+    (10.45, 2.60, "실제 결과에서 멈춘다"),
+    (13.90, 2.30, None),
+    (16.10, 3.70, "손흥민 투입. 전술도 바꾼다"),
+    (19.90, 2.70, None),
+    (22.40, 5.80, "한 번의 교체가 이후 기록을 바꾼다"),
+    (28.60, 4.80, None),
+    (36.70, 7.10, "결과는 리포트로 남는다"),
+    (43.80, 4.30, None),
+    (47.55, 2.65, "다섯 경기, 다시 지휘한다"),
 ]
 
-# (합성 타임라인 시작초, 문장). 각 문장은 자기 구간 안에서 끝나야 한다.
-# 넘치면 창을 늘리지 않고 문장을 줄인다. 아래 게이트가 막는다.
+# (합성 타임라인 시작초, 문장). 각 문장은 다음 문장 전과 영상 종료 전 끝나야 한다.
 NARRATION = [
-    (0.35, "손흥민은 벤치에 있었습니다"),
-    (3.6, "그리고 우리는 졌습니다"),
-    (6.7, "리매치는 그 순간부터 지휘권을 당신에게 넘깁니다"),
-    (12.1, "실제 결과를 보여주고 그 지점에서 멈춥니다"),
-    (17.1, "더그아웃에서 전술을 바꿉니다"),
-    (21.5, "벤치에서 손흥민을 고르고 뺄 선수를 누릅니다"),
-    (27.1, "확정하면 경기가 다시 흐릅니다. 토큰은 세 장뿐"),
-    (33.1, "끝까지 진행하면 결과 리포트가 나옵니다"),
-    (39.1, "내가 바꾼 것과 실제 역사가 나란히 놓입니다"),
-    (47.2, "브라우저에서 바로 해 보세요"),
+    (0.25, "63분, 손흥민은 벤치에 있었습니다."),
+    (5.90, "실제 결과에서 멈춥니다."),
+    (8.80, "선수와 전술을 직접 바꿉니다."),
+    (14.80, "손흥민을 넣고, 한 번의 교체를 확정합니다."),
+    (22.40, "그 선택 뒤의 경기 기록까지 확인합니다."),
+    (30.50, "결과는 실제 역사와 나란히 남습니다."),
+    (39.40, "다섯 경기를 다시 지휘하세요."),
+    (43.30, "리매치. 브라우저에서 바로."),
 ]
 
 FONT = None
@@ -66,7 +64,6 @@ for candidate in (
         break
 if FONT is None:
     raise SystemExit("한글 폰트를 찾지 못했습니다.")
-
 FONT_ESC = FONT.replace(":", "\\:")
 
 
@@ -86,24 +83,36 @@ def duration(path: Path) -> float:
     return float(out)
 
 
-def esc(text: str) -> str:
-    return text.replace("\\", "\\\\").replace(":", "\\:").replace("'", "\u2019").replace("%", "\\%")
-
-
-def make_card(out: Path, seconds: float, big: str, small: str) -> None:
-    """무채색 카드 한 장. 포인트 색은 제품과 같은 진녹 하나만."""
-    draw = (
-        f"drawtext=fontfile='{FONT_ESC}':text='{esc(big)}':fontsize=54:fontcolor=#f4f5f2:"
-        f"x=(w-text_w)/2:y=(h/2)-84,"
-        f"drawtext=fontfile='{FONT_ESC}':text='{esc(small)}':fontsize=34:fontcolor=#9fbdb4:"
-        f"x=(w-text_w)/2:y=(h/2)+6"
+def media_probe(path: Path) -> dict:
+    proc = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries",
+         "format=duration,bit_rate:stream=codec_name,profile,width,height,avg_frame_rate,bit_rate,sample_rate,channels",
+         "-of", "json", str(path)],
+        capture_output=True, text=True, check=True, encoding="utf-8",
     )
-    run([
-        "ffmpeg", "-v", "error", "-y", "-f", "lavfi",
-        "-i", f"color=c=#12211e:s={W}x{H}:r={FPS}:d={seconds:.2f}",
-        "-vf", draw, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-        "-pix_fmt", "yuv420p", str(out),
-    ])
+    return json.loads(proc.stdout)
+
+
+def esc(text: str) -> str:
+    return text.replace("\\", "\\\\").replace(":", "\\:").replace("'", "’").replace("%", "\\%")
+
+
+def caption_cps(text: str, seconds: float) -> float:
+    return len("".join(text.split())) / seconds
+
+
+def validate_captions() -> None:
+    violations = []
+    for i, (_, seconds, caption) in enumerate(BEATS):
+        if caption is None:
+            continue
+        cps = caption_cps(caption, seconds)
+        if seconds < CAPTION_MIN_SECONDS:
+            violations.append(f"beat {i}: {seconds:.2f}s < 최소 {CAPTION_MIN_SECONDS:.1f}s")
+        if cps > CAPTION_MAX_CPS:
+            violations.append(f"beat {i}: {cps:.1f} CPS > 상한 {CAPTION_MAX_CPS:.1f}")
+    if violations:
+        raise SystemExit("자막 게이트 위반:\n  " + "\n  ".join(violations))
 
 
 def make_end_card(out: Path, seconds: float) -> None:
@@ -117,41 +126,53 @@ def make_end_card(out: Path, seconds: float) -> None:
         f"drawtext=fontfile='{FONT_ESC}':text='{esc('설치도 가입도 결제도 없이 브라우저에서 바로')}':fontsize=25:"
         f"fontcolor=#7f918c:x=(w-text_w)/2:y=(h/2)+120"
     )
-    run([
-        "ffmpeg", "-v", "error", "-y", "-f", "lavfi",
-        "-i", f"color=c=#12211e:s={W}x{H}:r={FPS}:d={seconds:.2f}",
-        "-vf", draw, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-        "-pix_fmt", "yuv420p", str(out),
-    ])
+    run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i",
+         f"color=c=#12211e:s={W}x{H}:r={FPS}:d={seconds:.2f}", "-vf", draw,
+         "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", str(out)])
 
 
-def cut_beat(raw: Path, out: Path, start: float, length: float, caption: str) -> None:
-    """구간을 잘라 캡션을 얹는다.
+def cut_beat(raw: Path, out: Path, start: float, length: float, caption: str | None) -> None:
+    """플레이 화면을 원래 해상도로 유지하고, 필요한 샷에만 짧은 캡션을 얹는다.
 
-    캡션을 화면 위에 겹치면 제품 UI와 충돌한다. 첫 판본에서 하단 밴드가 「개입 확정」
-    버튼을 덮어 둘 다 못 읽었다(KB FFAC 크리틱이 잡았던 것과 같은 결함). 그래서 겹치지
-    않는다 — 화면을 위로 축소 배치하고 아래 빈 띠에만 캡션을 쓴다.
+    캡션은 하단 밴드다. 상단에 두면 제품이 그 자리에 쓰는 경기명과 시도 번호를 덮어
+    "무슨 경기를 보고 있는지"가 사라진다. 근거 = NAN 2026 「18 플레이 영상 도시에」
+    ①-6, 캡션은 화면 글자와 겹치지 않는 하단 단색 밴드에 둔다.
     """
-    band_h = 90
-    inner_w, inner_h = 1120, 630
-    pad_x = (W - inner_w) // 2
-    vf = (
-        f"scale={inner_w}:{inner_h},"
-        f"pad={W}:{H}:{pad_x}:0:color=#12211e,"
-        f"drawtext=fontfile='{FONT_ESC}':text='{esc(caption)}':fontsize=30:fontcolor=#f4f5f2:"
-        f"x=(w-text_w)/2:y={H - band_h + 26}"
-    )
-    run([
-        "ffmpeg", "-v", "error", "-y", "-ss", f"{start:.2f}", "-t", f"{length:.2f}",
-        "-i", str(raw), "-vf", vf, "-an",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-        "-pix_fmt", "yuv420p", "-r", str(FPS), str(out),
-    ])
+    vf = "null"
+    if caption:
+        vf = (
+            "drawbox=x=0:y=ih-84:w=iw:h=84:color=#12211e@0.82:t=fill,"
+            f"drawtext=fontfile='{FONT_ESC}':text='{esc(caption)}':fontsize=30:fontcolor=#f4f5f2:"
+            "x=(w-text_w)/2:y=h-56"
+        )
+    run(["ffmpeg", "-v", "error", "-y", "-ss", f"{start:.2f}", "-t", f"{length:.2f}",
+         "-i", str(raw), "-vf", vf, "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+         "-pix_fmt", "yuv420p", "-r", str(FPS), str(out)])
 
 
-def tts(text: str, out: Path) -> None:
-    run([sys.executable, "-m", "edge_tts", "--voice", VOICE, "--rate", "+6%",
-         "--text", text, "--write-media", str(out)])
+def tts(text: str, out: Path, synth: Path | None) -> None:
+    """문장 하나를 음성으로. 같은 문장은 다시 합성하지 않는다.
+
+    로컬 모델은 문장당 2분쯤 걸린다. 타이밍을 한 줄 고칠 때마다 전량을 다시 만들면
+    한 번의 수정이 16분이 되고, 그 비용이 문장을 다듬는 일 자체를 막는다.
+    문장 내용으로 캐시 키를 잡으므로 문장이 바뀌면 그 문장만 다시 만든다.
+    """
+    stamp = out.with_suffix(out.suffix + ".txt")
+    if out.exists() and stamp.exists() and stamp.read_text(encoding="utf-8") == text:
+        return
+    _synthesize(text, out, synth)
+    stamp.write_text(text, encoding="utf-8")
+
+
+def _synthesize(text: str, out: Path, synth: Path | None) -> None:
+    if synth:
+        runner = ("import importlib.util,sys;spec=importlib.util.spec_from_file_location('rematch_tts',sys.argv[1]);"
+                  "module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);"
+                  "module.synth(sys.argv[2],sys.argv[3])")
+        run([sys.executable, "-c", runner, str(synth), text, str(out)])
+    else:
+        run([sys.executable, "-m", "edge_tts", "--voice", VOICE, "--rate", "+6%",
+             "--text", text, "--write-media", str(out)])
 
 
 def main() -> int:
@@ -163,86 +184,89 @@ def main() -> int:
         webm = sorted(run_dir.glob("*.webm"))
         if not webm:
             raise SystemExit(f"raw 영상을 찾지 못했습니다: {run_dir}")
-        run(["ffmpeg", "-v", "error", "-y", "-i", str(webm[0]), "-c:v", "libx264",
-             "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(FPS), str(raw)])
+        run(["ffmpeg", "-v", "error", "-y", "-i", str(webm[0]), "-c:v", "libx264", "-preset", "veryfast",
+             "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(FPS), str(raw)])
     raw_len = duration(raw)
-    print(f"raw {raw_len:.2f}s")
+    validate_captions()
+    print(f"raw {raw_len:.2f}s; captions passed ({CAPTION_MIN_SECONDS:.1f}s minimum, {CAPTION_MAX_CPS:.0f} CPS maximum)")
 
     work = run_dir / "_work"
     if work.exists():
         shutil.rmtree(work)
     work.mkdir()
-
     parts: list[Path] = []
-    for i, (sec, big, small) in enumerate(HOOK):
-        card = work / f"hook{i}.mp4"
-        make_card(card, sec, big, small)
-        parts.append(card)
-
     for i, (start, length, caption) in enumerate(BEATS):
         if start + length > raw_len + 0.05:
             raise SystemExit(f"비트 {i}가 raw 길이를 넘습니다 ({start}+{length} > {raw_len:.2f})")
         beat = work / f"beat{i}.mp4"
         cut_beat(raw, beat, start, length, caption)
         parts.append(beat)
-
     end = work / "end.mp4"
-    make_end_card(end, 4.0)
+    # 엔드 카드는 마지막 내레이션이 끝날 자리를 겸한다. 음성 길이는 백엔드마다 다르므로
+    # 여기서 여유를 두지 않으면 백엔드를 바꿀 때마다 0.x초 때문에 전량을 다시 만든다.
+    make_end_card(end, 6.2)
     parts.append(end)
 
     listing = work / "parts.txt"
     listing.write_text("".join(f"file '{p.as_posix()}'\n" for p in parts), encoding="utf-8")
     silent = work / "silent.mp4"
-    run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(listing),
-         "-c", "copy", str(silent)])
+    run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(listing), "-c", "copy", str(silent)])
     total = duration(silent)
     print(f"무음 합성 {total:.2f}s (비트 {len(parts)}개)")
 
-    # 내레이션
+    # 백엔드 선택. 기본은 로컬(_tts/synth.py)이고, REMATCH_TTS=edge 로 기준선을 쓴다.
+    # 두 후보를 같은 파이프라인에 태워야 사람이 같은 조건에서 귀로 비교할 수 있다.
+    backend = os.environ.get("REMATCH_TTS", "local").strip().lower()
+    synth = ROOT / "_tts" / "synth.py"
+    use_synth = synth if (backend != "edge" and synth.exists()) else None
+    print(f"내레이션 백엔드: {'로컬 ' + synth.name if use_synth else 'edge-tts ' + VOICE}")
+    audio_ext = ".wav" if use_synth else ".mp3"
+    # 내레이션 배치.
+    #
+    # 시작 시각을 손으로 박아 두면 안 된다. 로컬 TTS는 자기회귀 생성이라 같은 문장도
+    # 실행마다 길이가 달라진다. 실제로 같은 대본이 한 번은 들어맞고 다음 실행에서
+    # 0.2초씩 넘쳐 게이트에 걸렸다. 그래서 표에 적힌 값은 "이 컷 즈음에 나왔으면 하는
+    # 희망 시각"으로만 쓰고, 실측 길이로 순차 배치해 겹침 자체를 만들지 않는다.
+    GAP = 0.18
     vo_paths: list[tuple[float, Path, float]] = []
-    for i, (at, line) in enumerate(NARRATION):
-        mp3 = work / f"vo{i}.mp3"
-        tts(line, mp3)
-        vo_paths.append((at, mp3, duration(mp3)))
+    cursor = 0.0
+    for i, (desired, line) in enumerate(NARRATION):
+        audio = work / f"vo{i}{audio_ext}"
+        tts(line, audio, use_synth)
+        dur = duration(audio)
+        at = max(desired, cursor)
+        vo_paths.append((at, audio, dur))
+        cursor = at + dur + GAP
+        if at > desired + 0.05:
+            print(f"  밀림 VO{i}: 희망 {desired}s -> 실제 {round(at, 2)}s ({line[:26]})")
 
-    overflow = []
-    for i, (at, path, dur) in enumerate(vo_paths):
-        end_at = at + dur
-        nxt = vo_paths[i + 1][0] if i + 1 < len(vo_paths) else total
-        if end_at > nxt + 0.05:
-            overflow.append((i, round(end_at, 2), round(nxt, 2), NARRATION[i][1][:34]))
-    if overflow:
-        for i, e, n, t in overflow:
-            print(f"  겹침 VO{i}: {e}s > 다음 {n}s — {t}")
-        raise SystemExit("내레이션이 자기 구간을 넘습니다. 문장을 줄이십시오.")
-    if vo_paths[-1][0] + vo_paths[-1][2] > total:
-        raise SystemExit("마지막 내레이션이 영상보다 깁니다.")
+    # 밀다 보면 영상 끝을 넘을 수 있다. 그때는 늘릴 창이 없으니 문장이 길다는 뜻이다.
+    last_at, _, last_dur = vo_paths[-1]
+    if last_at + last_dur > total + 0.05:
+        for i, (at, _, dur) in enumerate(vo_paths):
+            print(f"  VO{i}: {round(at, 2)}s + {round(dur, 2)}s = {round(at + dur, 2)}s : {NARRATION[i][1][:34]}")
+        raise SystemExit(
+            f"내레이션이 영상({total:.2f}s)을 {round(last_at + last_dur - total, 2)}s 넘습니다. 문장을 줄이십시오."
+        )
 
     args = ["ffmpeg", "-v", "error", "-y", "-i", str(silent)]
-    for _, path, _ in vo_paths:
-        args += ["-i", str(path)]
-    chains = []
-    for i, (at, _, _) in enumerate(vo_paths, start=1):
-        chains.append(f"[{i}:a]adelay={int(at * 1000)}|{int(at * 1000)}[a{i}]")
+    for _, audio, _ in vo_paths:
+        args += ["-i", str(audio)]
+    chains = [f"[{i}:a]adelay={int(at * 1000)}|{int(at * 1000)}[a{i}]" for i, (at, _, _) in enumerate(vo_paths, start=1)]
     mix = "".join(f"[a{i}]" for i in range(1, len(vo_paths) + 1))
-    chains.append(f"{mix}amix=inputs={len(vo_paths)}:normalize=0[vo]")
-    chains.append("[vo]loudnorm=I=-14:TP=-1.5:LRA=11[aout]")
-    args += ["-filter_complex", ";".join(chains), "-map", "0:v", "-map", "[aout]",
-             "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+    chains += [f"{mix}amix=inputs={len(vo_paths)}:normalize=0[vo]", f"[vo]loudnorm=I=-14:TP=-1.5:LRA=11,apad=whole_dur={int(total * 1_000_000)}[aout]"]
     final = run_dir / "REMATCH_시연영상.mp4"
-    args.append(str(final))
+    args += ["-filter_complex", ";".join(chains), "-map", "0:v", "-map", "[aout]",
+             "-c:v", "libx264", "-preset", "slow", "-profile:v", "high", "-pix_fmt", "yuv420p",
+             "-r", str(FPS), "-g", "15", "-bf", "2", "-b:v", "5M", "-minrate", "5M", "-maxrate", "5M", "-bufsize", "10M", "-x264-params", "nal-hrd=cbr:force-cfr=1",
+             "-c:a", "aac", "-b:a", "384k", "-ar", "48000", "-ac", "2", "-movflags", "+faststart", "-t", f"{total:.3f}", str(final)]
     run(args)
 
-    report = {
-        "raw_seconds": round(raw_len, 2),
-        "final_seconds": round(duration(final), 2),
-        "beats": len(BEATS),
-        "narration_lines": len(NARRATION),
-        "bytes": final.stat().st_size,
-        "url": URL,
-    }
-    (run_dir / "produce-report.json").write_text(
-        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    report = {"raw_seconds": round(raw_len, 2), "final_seconds": round(duration(final), 2), "beats": len(BEATS),
+              "narration_lines": len(NARRATION), "tts_backend": "packaging/_tts/synth.py" if use_synth else f"edge-tts:{VOICE}",
+              "captions": [{"text": caption, "seconds": length, "cps": round(caption_cps(caption, length), 2)}
+                           for _, length, caption in BEATS if caption], "media": media_probe(final), "bytes": final.stat().st_size, "url": URL}
+    (run_dir / "produce-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
     print(f"완성: {final}")
     return 0

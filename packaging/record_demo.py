@@ -88,26 +88,27 @@ def main() -> int:
         T0 = time.monotonic()
 
         # 1. 시작 화면
+        # 첫 프레임부터 실제 게임 화면을 남긴다. 홈 히어로를 짧게 보여 준 뒤 바로 미션으로 간다.
         page.goto(f"{BASE}/#/", wait_until="networkidle")
-        dwell(page, 2.2)
-        mark("home:top")
-        smooth_scroll(page, 620)
-        dwell(page, 1.6)
+        dwell(page, 1.4)
+        mark("home:hook")
+        smooth_scroll(page, 620, steps=12)
+        dwell(page, 1.4)
         mark("home:missions")
-        smooth_scroll(page, 0, steps=14)
-        dwell(page, 0.6)
+        smooth_scroll(page, 0, steps=12)
+        dwell(page, 0.4)
 
         # 2. 미션 진입
-        click_name(page, "대한민국 벤치, 63분")
+        click_name(page, "대한민국 벤치 이어받기")
         page.wait_for_timeout(1200)
         mark("matchroom:briefing")
-        dwell(page, 2.6)
+        dwell(page, 2.2)
 
         # 3. 선수 배치와 전술 설정
         click_name(page, "전술 바꾸기")
         page.wait_for_timeout(900)
         mark("dugout:open")
-        dwell(page, 1.6)
+        dwell(page, 1.2)
 
         click_css_text(page, ".bench-card", "손흥민")
         page.wait_for_timeout(700)
@@ -115,49 +116,43 @@ def main() -> int:
         click_css_text(page, ".player-token", "오현규")
         page.wait_for_timeout(900)
         mark("dugout:swap-target")
-        dwell(page, 1.2)
+        dwell(page, 1.0)
 
         click_name(page, "4-3-3")
         page.wait_for_timeout(800)
         mark("dugout:formation-433")
-        dwell(page, 1.2)
+        dwell(page, 0.8)
 
         click_name(page, "개입 확정")
         page.wait_for_timeout(1200)
         mark("dugout:commit")
-        dwell(page, 1.4)
+        dwell(page, 1.0)
 
-        # 4. 핵심 상호작용 — 개입 확정이 경기를 자동으로 재개한다
+        # 4. 핵심 상호작용 — 재개 직후와 사건 피드를 충분히 잡는다.
         mark("match:auto-resume")
-        dwell(page, 1.2)
+        dwell(page, 1.0)
         click_name(page, "2배속")
         page.wait_for_timeout(400)
         mark("match:speed-2x")
 
-        # 결정 요구가 뜨면 한 번 더 개입한다. 최대 40초까지 지켜본다.
-        deadline = time.monotonic() + 40
+        # 초기 피드 행은 이미 존재할 수 있으므로, 기준 행 수 이후의 새 이벤트를 기다린다.
+        initial_feed = page.evaluate('document.querySelectorAll(".event-feed li").length')
+        deadline = time.monotonic() + 24
         handled_prompt = False
         while time.monotonic() < deadline:
             page.wait_for_timeout(500)
-            if page.evaluate('document.querySelector(".decision-prompt") !== null'):
-                if not handled_prompt:
-                    mark("match:decision-prompt")
-                    dwell(page, 1.6)
-                    loc = page.get_by_role("button", name="이대로 본다").first
-                    if loc.count() > 0 and loc.is_visible():
-                        loc.click()
-                        mark("match:decision-dismiss")
-                    handled_prompt = True
-                    continue
-            if page.evaluate(
-                'document.body.innerText.includes("경기 종료") '
-                '|| document.querySelector(".mh-skip-button")?.disabled === false'
-            ):
-                pass
+            if page.evaluate('document.querySelector(".decision-prompt") !== null') and not handled_prompt:
+                mark("match:decision-prompt")
+                dwell(page, 1.2)
+                loc = page.get_by_role("button", name="이대로 본다").first
+                if loc.count() > 0 and loc.is_visible():
+                    loc.click()
+                    mark("match:decision-dismiss")
+                handled_prompt = True
             feed = page.evaluate('document.querySelectorAll(".event-feed li").length')
-            if feed >= 4:
+            if time.monotonic() >= deadline - 16 and feed >= initial_feed + 2:
                 break
-        mark(f"match:feed-filled({page.evaluate('document.querySelectorAll(\".event-feed li\").length')})")
+        mark(f"match:events({initial_feed}->{page.evaluate('document.querySelectorAll(\".event-feed li\").length')})")
         dwell(page, 2.0)
 
         skip = page.get_by_role("button", name="끝까지 건너뛰기").first
@@ -170,18 +165,18 @@ def main() -> int:
         page.goto(f"{BASE}/#/report/za-kor-2026", wait_until="networkidle")
         page.wait_for_timeout(1200)
         mark("report:top")
-        dwell(page, 2.4)
+        dwell(page, 3.0)
         smooth_scroll(page, 700)
-        dwell(page, 2.2)
+        dwell(page, 2.8)
         mark("report:grade")
         smooth_scroll(page, 1400, steps=20)
-        dwell(page, 1.8)
+        dwell(page, 2.6)
 
         # 6. 명예의 전당
         page.goto(f"{BASE}/#/hall-of-fame", wait_until="networkidle")
         page.wait_for_timeout(1000)
         mark("hall-of-fame")
-        dwell(page, 2.4)
+        dwell(page, 2.8)
 
         total = round(time.monotonic() - T0, 2)
         ctx.close()

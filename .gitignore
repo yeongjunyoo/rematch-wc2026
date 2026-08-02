@@ -16,3 +16,12 @@ artifacts/
 .env*
 *.tsbuildinfo
 packaging/_footage/
+
+# TTS 후보 실측의 산출물. 판정 근거인 REPORT.md 와 호출부 synth.py 만 저장소에 남기고
+# 모델 가상환경과 샘플 오디오는 재현 가능한 대용량 자산이라 Git 밖에 둔다.
+packaging/_tts/.venv/
+packaging/_tts/.qwen-venv/
+packaging/_tts/**/*.wav
+packaging/_tts/**/*.mp3
+packaging/_tts/__pycache__/
+packaging/__pycache__/
